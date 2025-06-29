@@ -496,7 +496,7 @@ namespace EnhancedDynamics.Editor
                     
                     foreach (var method in allMethods)
                     {
-                        Debug.Log($"[EnhancedDynamics]   - {method.Name} ({method.IsPrivate ? "private" : "public"}, {method.IsStatic ? "static" : "instance"})");
+                        Debug.Log($"[EnhancedDynamics]   - {method.Name} ({(method.IsPrivate ? "private" : "public")}, {(method.IsStatic ? "static" : "instance")})");
                         
                         // Try to patch any method that might be drawing our fields
                         if (method.Name.ToLower().Contains("draw") || 
