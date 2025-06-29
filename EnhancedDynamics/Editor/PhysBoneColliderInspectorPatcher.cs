@@ -717,54 +717,56 @@ namespace EnhancedDynamics.Editor
                 EditorGUILayout.Space(10);
                 
                 // Create a box for better visual separation
-                EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-                EditorGUILayout.LabelField("Viewport Gizmos", EditorStyles.boldLabel);
+                EditorGUILayout.Space();
+                EditorGUILayout.LabelField("Viewport Gizmos", EditorStyles.miniLabel);
+                
                 EditorGUILayout.BeginHorizontal();
+                
+                // Store original background color
+                var originalColor = GUI.backgroundColor;
                 
                 // Radius button (not for Plane)
                 if (_currentCollider.shapeType != VRCPhysBoneColliderBase.ShapeType.Plane)
                 {
                     GUI.backgroundColor = state.radiusGizmo ? Color.green : Color.red;
-                    if (GUILayout.Button("Radius (R)", GUILayout.ExpandWidth(true)))
+                    if (GUILayout.Button(state.radiusGizmo ? "● Radius" : "○ Radius", EditorStyles.miniButton))
                     {
                         state.radiusGizmo = !state.radiusGizmo;
                         SceneView.RepaintAll();
                     }
-                    GUILayout.FlexibleSpace();
                 }
                 
                 // Height button (only for Capsule)
                 if (_currentCollider.shapeType == VRCPhysBoneColliderBase.ShapeType.Capsule)
                 {
                     GUI.backgroundColor = state.heightGizmo ? Color.green : Color.red;
-                    if (GUILayout.Button("Height (H)", GUILayout.ExpandWidth(true)))
+                    if (GUILayout.Button(state.heightGizmo ? "● Height" : "○ Height", EditorStyles.miniButton))
                     {
                         state.heightGizmo = !state.heightGizmo;
                         SceneView.RepaintAll();
                     }
-                    GUILayout.FlexibleSpace();
                 }
                 
                 // Position button
                 GUI.backgroundColor = state.positionGizmo ? Color.green : Color.red;
-                if (GUILayout.Button("Position (P)", GUILayout.ExpandWidth(true)))
+                if (GUILayout.Button(state.positionGizmo ? "● Position" : "○ Position", EditorStyles.miniButton))
                 {
                     state.positionGizmo = !state.positionGizmo;
                     SceneView.RepaintAll();
                 }
-                GUILayout.FlexibleSpace();
                 
                 // Rotation button
                 GUI.backgroundColor = state.rotationGizmo ? Color.green : Color.red;
-                if (GUILayout.Button("Rotation (↻)", GUILayout.ExpandWidth(true)))
+                if (GUILayout.Button(state.rotationGizmo ? "● Rotation" : "○ Rotation", EditorStyles.miniButton))
                 {
                     state.rotationGizmo = !state.rotationGizmo;
                     SceneView.RepaintAll();
                 }
                 
-                GUI.backgroundColor = Color.white;
+                // Restore original background color
+                GUI.backgroundColor = originalColor;
+                
                 EditorGUILayout.EndHorizontal();
-                EditorGUILayout.EndVertical();
             }
             
             _isDrawingPhysBoneInspector = false;
