@@ -676,20 +676,7 @@ namespace EnhancedDynamics.Editor
         
         private static void EndProperty_Postfix()
         {
-            if (_isDrawingPhysBoneInspector && _currentProperty != null)
-            {
-                Debug.Log($"[EnhancedDynamics] EndProperty: {_currentProperty.name}");
-                
-                // Check if we just finished drawing one of our target properties
-                if (_currentProperty.name == "radius" || _currentProperty.name == "height" || 
-                    _currentProperty.name == "position" || _currentProperty.name == "rotation")
-                {
-                    DrawInlineButton(_currentProperty.name);
-                }
-                
-                _currentProperty = null;
-                _currentPropertyLabel = null;
-            }
+            // Disabled - we use the buttons at the bottom instead
         }
         
         private static void EditorGUI_PropertyField_Postfix(Rect position, SerializedProperty property)
@@ -799,179 +786,42 @@ namespace EnhancedDynamics.Editor
             var propertyName = property.name;
             Debug.Log($"[EnhancedDynamics] PropertyField_Postfix called for: {propertyName} (args: {__args.Length})");
             
-            // Check if this is one of our target properties
-            if (propertyName == "radius" || propertyName == "height" || propertyName == "position")
-            {
-                _lastPropertyName = propertyName;
-                DrawInlineButton(propertyName);
-            }
+            // Disabled - we use the buttons at the bottom instead
         }
         
         private static void QuaternionAsEulerField_Postfix(SerializedProperty property)
         {
-            if (!_isDrawingPhysBoneInspector || _currentCollider == null || property == null)
-                return;
-            
-            Debug.Log($"[EnhancedDynamics] QuaternionAsEulerField_Postfix called for: {property?.name}");
-            
-            // This is called for rotation field
-            if (property.name == "rotation")
-            {
-                _lastPropertyName = "rotation";
-                DrawInlineButton("rotation");
-            }
+            // Disabled - we use the buttons at the bottom instead
         }
         
         private static void GenericField_Postfix(object __instance, MethodBase __originalMethod, object[] __args)
         {
-            if (!_isDrawingPhysBoneInspector || _currentCollider == null)
-                return;
-            
-            Debug.Log($"[EnhancedDynamics] GenericField_Postfix called for method: {__originalMethod.Name}");
-            
-            // Try to extract property information from the arguments
-            SerializedProperty property = null;
-            foreach (var arg in __args)
-            {
-                if (arg is SerializedProperty prop)
-                {
-                    property = prop;
-                    break;
-                }
-            }
-            
-            if (property != null && (property.name == "radius" || property.name == "height" || property.name == "position"))
-            {
-                Debug.Log($"[EnhancedDynamics] Found property {property.name} in {__originalMethod.Name}");
-                DrawInlineButton(property.name);
-            }
+            // Disabled - we use the buttons at the bottom instead
         }
         
         private static void InspectorUtil_Field_Postfix(object[] __args, MethodBase __originalMethod)
         {
-            if (!_isDrawingPhysBoneInspector || _currentCollider == null)
-                return;
-            
-            Debug.Log($"[EnhancedDynamics] InspectorUtil_Field_Postfix called for: {__originalMethod.Name}");
-            
-            // InspectorUtil methods might have different signatures, try to find SerializedProperty
-            SerializedProperty property = null;
-            foreach (var arg in __args)
-            {
-                if (arg is SerializedProperty prop)
-                {
-                    property = prop;
-                    break;
-                }
-            }
-            
-            if (property != null && (property.name == "radius" || property.name == "height" || property.name == "position"))
-            {
-                Debug.Log($"[EnhancedDynamics] Found property {property.name} in InspectorUtil.{__originalMethod.Name}");
-                DrawInlineButton(property.name);
-            }
+            // Disabled - we use the buttons at the bottom instead
         }
         
         private static void FloatField_Postfix(float __result, object[] __args)
         {
-            if (!_isDrawingPhysBoneInspector || _currentCollider == null)
-                return;
-            
-            // Check if this is a float field with a label that matches our properties
-            string label = null;
-            if (__args.Length > 0 && __args[0] is string str)
-                label = str;
-            else if (__args.Length > 0 && __args[0] is GUIContent content)
-                label = content.text;
-            
-            Debug.Log($"[EnhancedDynamics] FloatField_Postfix - Label: {label ?? "null"}");
-            
-            if (label == "Radius" || label == "Height")
-            {
-                DrawInlineButton(label.ToLower());
-            }
+            // Disabled - we use the buttons at the bottom instead
         }
         
         private static void Vector3Field_Postfix(Vector3 __result, object[] __args)
         {
-            if (!_isDrawingPhysBoneInspector || _currentCollider == null)
-                return;
-            
-            // Check if this is a vector field with a label that matches our properties
-            string label = null;
-            if (__args.Length > 0 && __args[0] is string str)
-                label = str;
-            else if (__args.Length > 0 && __args[0] is GUIContent content)
-                label = content.text;
-            
-            Debug.Log($"[EnhancedDynamics] Vector3Field_Postfix - Label: {label ?? "null"}");
-            
-            if (label == "Position")
-            {
-                DrawInlineButton("position");
-            }
+            // Disabled - we use the buttons at the bottom instead
         }
         
         private static void EditorGUI_FloatField_Postfix(float __result, object[] __args)
         {
-            if (!_isDrawingPhysBoneInspector || _currentCollider == null)
-                return;
-            
-            // EditorGUI.FloatField has different parameter order - Rect is first
-            string label = null;
-            GUIContent content = null;
-            
-            // Try to find label in args (skip Rect which is usually first)
-            for (int i = 1; i < __args.Length; i++)
-            {
-                if (__args[i] is string str)
-                {
-                    label = str;
-                    break;
-                }
-                else if (__args[i] is GUIContent gc)
-                {
-                    content = gc;
-                    label = gc.text;
-                    break;
-                }
-            }
-            
-            Debug.Log($"[EnhancedDynamics] EditorGUI.FloatField_Postfix - Label: {label ?? "null"}, Args: {__args.Length}");
-            
-            if (label == "Radius" || label == "Height")
-            {
-                DrawInlineButton(label.ToLower());
-            }
+            // Disabled - we use the buttons at the bottom instead
         }
         
         private static void EditorGUI_Vector3Field_Postfix(Vector3 __result, object[] __args)
         {
-            if (!_isDrawingPhysBoneInspector || _currentCollider == null)
-                return;
-            
-            // Similar to FloatField
-            string label = null;
-            for (int i = 1; i < __args.Length; i++)
-            {
-                if (__args[i] is string str)
-                {
-                    label = str;
-                    break;
-                }
-                else if (__args[i] is GUIContent content)
-                {
-                    label = content.text;
-                    break;
-                }
-            }
-            
-            Debug.Log($"[EnhancedDynamics] EditorGUI.Vector3Field_Postfix - Label: {label ?? "null"}");
-            
-            if (label == "Position")
-            {
-                DrawInlineButton("position");
-            }
+            // Disabled - we use the buttons at the bottom instead
         }
         
         private static void PrefixLabel_Postfix(object[] __args)
@@ -1044,74 +894,6 @@ namespace EnhancedDynamics.Editor
             }
         }
         
-        
-        private static void DrawInlineButton(string propertyName)
-        {
-            Debug.Log($"[EnhancedDynamics] DrawInlineButton called for: {propertyName}");
-            
-            // Get or create gizmo state
-            var instanceId = _currentCollider.GetInstanceID();
-            if (!_gizmoStates.ContainsKey(instanceId))
-            {
-                _gizmoStates[instanceId] = new GizmoState();
-            }
-            var state = _gizmoStates[instanceId];
-            
-            // Determine which button to draw
-            bool isActive = false;
-            string buttonText = "";
-            bool shouldDraw = true;
-            
-            switch (propertyName)
-            {
-                case "radius":
-                    if (_currentCollider.shapeType == VRCPhysBoneColliderBase.ShapeType.Plane)
-                        shouldDraw = false;
-                    isActive = state.radiusGizmo;
-                    buttonText = "Toggle Radius Gizmo";
-                    break;
-                case "height":
-                    if (_currentCollider.shapeType != VRCPhysBoneColliderBase.ShapeType.Capsule)
-                        shouldDraw = false;
-                    isActive = state.heightGizmo;
-                    buttonText = "Toggle Height Gizmo";
-                    break;
-                case "position":
-                    isActive = state.positionGizmo;
-                    buttonText = "Toggle Position Gizmo";
-                    break;
-                case "rotation":
-                    isActive = state.rotationGizmo;
-                    buttonText = "Toggle Rotation Gizmo";
-                    break;
-                default:
-                    shouldDraw = false;
-                    break;
-            }
-            
-            if (!shouldDraw)
-                return;
-            
-            // Draw button similar to how rotation button works
-            var oldColor = GUI.backgroundColor;
-            GUI.backgroundColor = isActive ? Color.green : Color.red;
-            
-            if (GUILayout.Button(buttonText, GUILayout.Height(18)))
-            {
-                Debug.Log($"[EnhancedDynamics] Button clicked for: {propertyName}");
-                // Toggle the appropriate gizmo
-                switch (propertyName)
-                {
-                    case "radius": state.radiusGizmo = !state.radiusGizmo; break;
-                    case "height": state.heightGizmo = !state.heightGizmo; break;
-                    case "position": state.positionGizmo = !state.positionGizmo; break;
-                    case "rotation": state.rotationGizmo = !state.rotationGizmo; break;
-                }
-                SceneView.RepaintAll();
-            }
-            
-            GUI.backgroundColor = oldColor;
-        }
         
         private static void OnSceneGUI(SceneView sceneView)
         {
