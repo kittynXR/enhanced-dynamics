@@ -1,0 +1,19 @@
+{
+    "name": "EnhancedDynamics.Runtime",
+    "rootNamespace": "EnhancedDynamics.Runtime",
+    "references": [
+        "VRC.SDK3.Dynamics.PhysBone",
+        "VRC.SDKBase"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "0Harmony.dll"
+    ],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -1,0 +1,23 @@
+{
+    "name": "EnhancedDynamics.Editor",
+    "rootNamespace": "EnhancedDynamics.Editor",
+    "references": [
+        "EnhancedDynamics.Runtime",
+        "VRC.SDK3.Dynamics.PhysBone",
+        "VRC.SDKBase",
+        "VRC.SDK3.Dynamics.PhysBone.Editor"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "0Harmony.dll"
+    ],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
