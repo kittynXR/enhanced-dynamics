@@ -14,6 +14,8 @@ namespace EnhancedDynamics.Editor
     [InitializeOnLoad]
     public static class PhysBoneColliderInspectorPatcher
     {
+        // Force reinitialization on next compile
+        private const int INIT_VERSION = 2;
         private static Harmony _harmony;
         private const string HarmonyId = "com.enhanceddynamics.physbone.inspector";
         
@@ -705,6 +707,23 @@ namespace EnhancedDynamics.Editor
             if (_isDrawingPhysBoneInspector)
             {
                 Debug.Log("[EnhancedDynamics] Starting to draw PhysBone inspector");
+                
+                // Try to access the serialized object
+                var serializedObjectField = __instance.GetType().GetProperty("serializedObject", BindingFlags.Public | BindingFlags.Instance);
+                if (serializedObjectField != null)
+                {
+                    var serializedObject = serializedObjectField.GetValue(__instance) as SerializedObject;
+                    if (serializedObject != null)
+                    {
+                        // Log the properties we're interested in
+                        var radiusProp = serializedObject.FindProperty("radius");
+                        var heightProp = serializedObject.FindProperty("height");
+                        var positionProp = serializedObject.FindProperty("position");
+                        var rotationProp = serializedObject.FindProperty("rotation");
+                        
+                        Debug.Log($"[EnhancedDynamics] Found properties - radius: {radiusProp != null}, height: {heightProp != null}, position: {positionProp != null}, rotation: {rotationProp != null}");
+                    }
+                }
             }
         }
         
@@ -716,6 +735,22 @@ namespace EnhancedDynamics.Editor
                 DrawInlineButton(_pendingButtonProperty);
                 _shouldDrawButtonAfterProperty = false;
                 _pendingButtonProperty = null;
+            }
+            
+            // Try to detect fields by monitoring the last rect
+            if (_isDrawingPhysBoneInspector && Event.current.type == EventType.Repaint)
+            {
+                var lastRect = GUILayoutUtility.GetLastRect();
+                if (lastRect.height > 0 && lastRect.height < 25) // Typical field height
+                {
+                    // Check if we just drew a field by looking at the current event
+                    var currentControl = GUIUtility.GetControlID(FocusType.Passive);
+                    if (currentControl != _lastControlID)
+                    {
+                        _lastControlID = currentControl;
+                        Debug.Log($"[EnhancedDynamics] Control drawn: ID={currentControl}, Rect={lastRect}");
+                    }
+                }
             }
             
             // Keep the fallback section at the bottom
