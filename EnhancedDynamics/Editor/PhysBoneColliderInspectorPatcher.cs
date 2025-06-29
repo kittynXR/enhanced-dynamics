@@ -725,35 +725,38 @@ namespace EnhancedDynamics.Editor
                 if (_currentCollider.shapeType != VRCPhysBoneColliderBase.ShapeType.Plane)
                 {
                     GUI.backgroundColor = state.radiusGizmo ? Color.green : Color.red;
-                    if (GUILayout.Button("Radius (R)", GUILayout.Width(80)))
+                    if (GUILayout.Button("Radius (R)", GUILayout.ExpandWidth(true)))
                     {
                         state.radiusGizmo = !state.radiusGizmo;
                         SceneView.RepaintAll();
                     }
+                    GUILayout.FlexibleSpace();
                 }
                 
                 // Height button (only for Capsule)
                 if (_currentCollider.shapeType == VRCPhysBoneColliderBase.ShapeType.Capsule)
                 {
                     GUI.backgroundColor = state.heightGizmo ? Color.green : Color.red;
-                    if (GUILayout.Button("Height (H)", GUILayout.Width(80)))
+                    if (GUILayout.Button("Height (H)", GUILayout.ExpandWidth(true)))
                     {
                         state.heightGizmo = !state.heightGizmo;
                         SceneView.RepaintAll();
                     }
+                    GUILayout.FlexibleSpace();
                 }
                 
                 // Position button
                 GUI.backgroundColor = state.positionGizmo ? Color.green : Color.red;
-                if (GUILayout.Button("Position (P)", GUILayout.Width(80)))
+                if (GUILayout.Button("Position (P)", GUILayout.ExpandWidth(true)))
                 {
                     state.positionGizmo = !state.positionGizmo;
                     SceneView.RepaintAll();
                 }
+                GUILayout.FlexibleSpace();
                 
                 // Rotation button
                 GUI.backgroundColor = state.rotationGizmo ? Color.green : Color.red;
-                if (GUILayout.Button("Rotation (↻)", GUILayout.Width(80)))
+                if (GUILayout.Button("Rotation (↻)", GUILayout.ExpandWidth(true)))
                 {
                     state.rotationGizmo = !state.rotationGizmo;
                     SceneView.RepaintAll();
@@ -943,22 +946,38 @@ namespace EnhancedDynamics.Editor
             // Draw height gizmo for capsule
             if (activeState.heightGizmo && activeCollider.shapeType == VRCPhysBoneColliderBase.ShapeType.Capsule)
             {
-                EditorGUI.BeginChangeCheck();
                 Handles.color = new Color(0f, 1f, 0.5f, 0.8f);
                 
-                // Draw height handle as a line
-                var heightVector = activeCollider.rotation * Vector3.up * activeCollider.height;
-                var endPos = activeCollider.position + heightVector;
+                // Calculate capsule endpoints
+                var halfHeight = activeCollider.height * 0.5f;
+                var upVector = activeCollider.rotation * Vector3.up;
+                var topPos = activeCollider.position + upVector * halfHeight;
+                var bottomPos = activeCollider.position - upVector * halfHeight;
                 
-                var newEndPos = Handles.PositionHandle(endPos, activeCollider.rotation);
-                
+                // Draw top arrow handle
+                EditorGUI.BeginChangeCheck();
+                var newTopPos = Handles.Slider(topPos, upVector, HandleUtility.GetHandleSize(topPos) * 0.5f, Handles.ArrowHandleCap, 0.1f);
                 if (EditorGUI.EndChangeCheck())
                 {
                     Undo.RecordObject(activeCollider, "Change PhysBone Height");
-                    var localEnd = Quaternion.Inverse(activeCollider.rotation) * (newEndPos - activeCollider.position);
-                    activeCollider.height = localEnd.y;
+                    var localTop = Quaternion.Inverse(activeCollider.rotation) * (newTopPos - activeCollider.position);
+                    activeCollider.height = Mathf.Max(0.01f, localTop.y * 2f);
                     EditorUtility.SetDirty(activeCollider);
                 }
+                
+                // Draw bottom arrow handle
+                EditorGUI.BeginChangeCheck();
+                var newBottomPos = Handles.Slider(bottomPos, -upVector, HandleUtility.GetHandleSize(bottomPos) * 0.5f, Handles.ArrowHandleCap, 0.1f);
+                if (EditorGUI.EndChangeCheck())
+                {
+                    Undo.RecordObject(activeCollider, "Change PhysBone Height");
+                    var localBottom = Quaternion.Inverse(activeCollider.rotation) * (activeCollider.position - newBottomPos);
+                    activeCollider.height = Mathf.Max(0.01f, localBottom.y * 2f);
+                    EditorUtility.SetDirty(activeCollider);
+                }
+                
+                // Draw connecting line
+                Handles.DrawLine(topPos, bottomPos);
             }
             
             // Draw position gizmo
