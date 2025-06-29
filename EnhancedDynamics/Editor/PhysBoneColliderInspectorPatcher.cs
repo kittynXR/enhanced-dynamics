@@ -977,11 +977,8 @@ namespace EnhancedDynamics.Editor
                     EditorUtility.SetDirty(activeCollider);
                 }
                 
-                // Draw connecting line with increased thickness
-                var oldThickness = Handles.lineThickness;
-                Handles.lineThickness = 2.0f;
-                Handles.DrawLine(topPos, bottomPos);
-                Handles.lineThickness = oldThickness;
+                // Draw connecting line with increased thickness using AA poly line
+                Handles.DrawAAPolyLine(3.0f, topPos, bottomPos);
             }
             
             // Draw position gizmo
