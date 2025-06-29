@@ -352,18 +352,38 @@ namespace EnhancedDynamics.Editor
         
         private static void OnSceneGUI(SceneView sceneView)
         {
-            // Find all contact components in the scene
-            var receivers = GameObject.FindObjectsOfType<VRCContactReceiver>();
-            var senders = GameObject.FindObjectsOfType<VRCContactSender>();
+            // Find the active contact component (like PhysBone does)
+            ContactBase activeContact = null;
+            ContactGizmoState activeState = null;
+            Color gizmoColor = Color.white;
             
-            foreach (var receiver in receivers)
+            if (Selection.activeGameObject != null)
             {
-                DrawContactGizmos(receiver, new Color(0, 1, 1, 0.8f)); // Cyan for receivers
+                // Check for ContactReceiver
+                var receiver = Selection.activeGameObject.GetComponent<VRCContactReceiver>();
+                if (receiver != null && _gizmoStates.ContainsKey(receiver.GetInstanceID()))
+                {
+                    activeContact = receiver;
+                    activeState = _gizmoStates[receiver.GetInstanceID()];
+                    gizmoColor = new Color(0, 1, 1, 0.8f); // Cyan for receivers
+                }
+                else
+                {
+                    // Check for ContactSender
+                    var sender = Selection.activeGameObject.GetComponent<VRCContactSender>();
+                    if (sender != null && _gizmoStates.ContainsKey(sender.GetInstanceID()))
+                    {
+                        activeContact = sender;
+                        activeState = _gizmoStates[sender.GetInstanceID()];
+                        gizmoColor = new Color(1, 0.92f, 0.016f, 0.8f); // Yellow for senders
+                    }
+                }
             }
             
-            foreach (var sender in senders)
+            // Only draw gizmos for the selected contact
+            if (activeContact != null && activeState != null)
             {
-                DrawContactGizmos(sender, new Color(1, 0.92f, 0.016f, 0.8f)); // Yellow for senders
+                DrawContactGizmos(activeContact, gizmoColor);
             }
         }
         
@@ -382,64 +402,57 @@ namespace EnhancedDynamics.Editor
             
             if (state.radiusGizmo)
             {
-                Handles.color = color;
+                // Use orange/red color for radius handles to match PhysBone
+                Handles.color = new Color(1f, 0.5f, 0f, 0.8f);
                 
                 var worldPos = transform.TransformPoint(contact.position);
-                var worldScale = transform.lossyScale;
-                var scaledRadius = contact.radius * Mathf.Max(worldScale.x, worldScale.y, worldScale.z);
+                var worldRotation = transform.rotation * contact.rotation;
                 
-                if (isSelected)
+                // Always show radius handle when gizmo is active (like PhysBone)
+                EditorGUI.BeginChangeCheck();
+                var newRadius = Handles.RadiusHandle(worldRotation, worldPos, contact.radius);
+                if (EditorGUI.EndChangeCheck())
                 {
-                    // Show interactive radius handle when selected
-                    EditorGUI.BeginChangeCheck();
-                    var worldRotation = transform.rotation * contact.rotation;
-                    var newRadius = Handles.RadiusHandle(worldRotation, worldPos, scaledRadius);
-                    if (EditorGUI.EndChangeCheck())
-                    {
-                        Undo.RecordObject(contact, "Change Contact Radius");
-                        contact.radius = newRadius / Mathf.Max(worldScale.x, worldScale.y, worldScale.z);
-                        EditorUtility.SetDirty(contact);
-                    }
+                    Undo.RecordObject(contact, "Change Contact Radius");
+                    contact.radius = newRadius;
+                    EditorUtility.SetDirty(contact);
                 }
             }
             
             if (state.heightGizmo && contact.shapeType == ContactBase.ShapeType.Capsule)
             {
-                if (isSelected)
+                Handles.color = new Color(1f, 0.92f, 0.016f, 0.8f); // Yellow for height
+                
+                var worldPos = transform.TransformPoint(contact.position);
+                var halfHeight = contact.height * 0.5f;
+                var upVector = transform.rotation * contact.rotation * Vector3.up;
+                var topPos = worldPos + upVector * halfHeight * transform.lossyScale.y;
+                var bottomPos = worldPos - upVector * halfHeight * transform.lossyScale.y;
+                
+                EditorGUI.BeginChangeCheck();
+                var newTopPos = Handles.Slider(topPos, upVector, HandleUtility.GetHandleSize(topPos) * 1.0f, Handles.ArrowHandleCap, 0.1f);
+                if (EditorGUI.EndChangeCheck())
                 {
-                    Handles.color = new Color(1f, 0.92f, 0.016f, 0.8f); // Yellow for height
-                    
-                    var worldPos = transform.TransformPoint(contact.position);
-                    var halfHeight = contact.height * 0.5f;
-                    var upVector = transform.rotation * contact.rotation * Vector3.up;
-                    var topPos = worldPos + upVector * halfHeight * transform.lossyScale.y;
-                    var bottomPos = worldPos - upVector * halfHeight * transform.lossyScale.y;
-                    
-                    EditorGUI.BeginChangeCheck();
-                    var newTopPos = Handles.Slider(topPos, upVector, HandleUtility.GetHandleSize(topPos) * 1.0f, Handles.ArrowHandleCap, 0.1f);
-                    if (EditorGUI.EndChangeCheck())
-                    {
-                        Undo.RecordObject(contact, "Change Contact Height");
-                        var delta = Vector3.Project(newTopPos - topPos, upVector);
-                        contact.height += delta.magnitude * 2f / transform.lossyScale.y * (Vector3.Dot(delta, upVector) > 0 ? 1 : -1);
-                        contact.height = Mathf.Max(0.01f, contact.height);
-                        EditorUtility.SetDirty(contact);
-                    }
-                    
-                    EditorGUI.BeginChangeCheck();
-                    var newBottomPos = Handles.Slider(bottomPos, -upVector, HandleUtility.GetHandleSize(bottomPos) * 1.0f, Handles.ArrowHandleCap, 0.1f);
-                    if (EditorGUI.EndChangeCheck())
-                    {
-                        Undo.RecordObject(contact, "Change Contact Height");
-                        var delta = Vector3.Project(newBottomPos - bottomPos, -upVector);
-                        contact.height += delta.magnitude * 2f / transform.lossyScale.y * (Vector3.Dot(delta, -upVector) > 0 ? 1 : -1);
-                        contact.height = Mathf.Max(0.01f, contact.height);
-                        EditorUtility.SetDirty(contact);
-                    }
-                    
-                    // Draw capsule line
-                    Handles.DrawAAPolyLine(3.0f, topPos, bottomPos);
+                    Undo.RecordObject(contact, "Change Contact Height");
+                    var delta = Vector3.Project(newTopPos - topPos, upVector);
+                    contact.height += delta.magnitude * 2f / transform.lossyScale.y * (Vector3.Dot(delta, upVector) > 0 ? 1 : -1);
+                    contact.height = Mathf.Max(0.01f, contact.height);
+                    EditorUtility.SetDirty(contact);
                 }
+                
+                EditorGUI.BeginChangeCheck();
+                var newBottomPos = Handles.Slider(bottomPos, -upVector, HandleUtility.GetHandleSize(bottomPos) * 1.0f, Handles.ArrowHandleCap, 0.1f);
+                if (EditorGUI.EndChangeCheck())
+                {
+                    Undo.RecordObject(contact, "Change Contact Height");
+                    var delta = Vector3.Project(newBottomPos - bottomPos, -upVector);
+                    contact.height += delta.magnitude * 2f / transform.lossyScale.y * (Vector3.Dot(delta, -upVector) > 0 ? 1 : -1);
+                    contact.height = Mathf.Max(0.01f, contact.height);
+                    EditorUtility.SetDirty(contact);
+                }
+                
+                // Draw capsule line
+                Handles.DrawAAPolyLine(3.0f, topPos, bottomPos);
             }
             
             if (state.positionGizmo)
@@ -448,16 +461,13 @@ namespace EnhancedDynamics.Editor
                 
                 var worldPos = transform.TransformPoint(contact.position);
                 
-                if (isSelected)
+                EditorGUI.BeginChangeCheck();
+                var newWorldPos = Handles.PositionHandle(worldPos, transform.rotation);
+                if (EditorGUI.EndChangeCheck())
                 {
-                    EditorGUI.BeginChangeCheck();
-                    var newWorldPos = Handles.PositionHandle(worldPos, transform.rotation);
-                    if (EditorGUI.EndChangeCheck())
-                    {
-                        Undo.RecordObject(contact, "Change Contact Position");
-                        contact.position = transform.InverseTransformPoint(newWorldPos);
-                        EditorUtility.SetDirty(contact);
-                    }
+                    Undo.RecordObject(contact, "Change Contact Position");
+                    contact.position = transform.InverseTransformPoint(newWorldPos);
+                    EditorUtility.SetDirty(contact);
                 }
             }
             
@@ -468,16 +478,13 @@ namespace EnhancedDynamics.Editor
                 var worldPos = transform.TransformPoint(contact.position);
                 var worldRot = transform.rotation * contact.rotation;
                 
-                if (isSelected)
+                EditorGUI.BeginChangeCheck();
+                var newWorldRot = Handles.RotationHandle(worldRot, worldPos);
+                if (EditorGUI.EndChangeCheck())
                 {
-                    EditorGUI.BeginChangeCheck();
-                    var newWorldRot = Handles.RotationHandle(worldRot, worldPos);
-                    if (EditorGUI.EndChangeCheck())
-                    {
-                        Undo.RecordObject(contact, "Change Contact Rotation");
-                        contact.rotation = Quaternion.Inverse(transform.rotation) * newWorldRot;
-                        EditorUtility.SetDirty(contact);
-                    }
+                    Undo.RecordObject(contact, "Change Contact Rotation");
+                    contact.rotation = Quaternion.Inverse(transform.rotation) * newWorldRot;
+                    EditorUtility.SetDirty(contact);
                 }
             }
         }

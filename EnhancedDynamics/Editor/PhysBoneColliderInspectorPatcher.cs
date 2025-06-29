@@ -40,6 +40,10 @@ namespace EnhancedDynamics.Editor
             public bool heightGizmo;
             public bool positionGizmo;
             public bool rotationGizmo;
+            
+            // Cached world positions when gizmo was enabled
+            public Vector3? cachedWorldPosition;
+            public Quaternion? cachedWorldRotation;
         }
         
         static PhysBoneColliderInspectorPatcher()
@@ -919,11 +923,8 @@ namespace EnhancedDynamics.Editor
             if (activeCollider == null || activeState == null)
                 return;
             
-            var transform = activeCollider.transform;
-            
-            // Set up handle matrix
-            var oldMatrix = Handles.matrix;
-            Handles.matrix = transform.localToWorldMatrix;
+            // Use rootTransform if available, otherwise use the collider's transform
+            var transform = activeCollider.rootTransform != null ? activeCollider.rootTransform : activeCollider.transform;
             
             // Draw radius gizmo
             if (activeState.radiusGizmo && activeCollider.shapeType != VRCPhysBoneColliderBase.ShapeType.Plane)
@@ -931,9 +932,12 @@ namespace EnhancedDynamics.Editor
                 EditorGUI.BeginChangeCheck();
                 Handles.color = new Color(1f, 0.5f, 0f, 0.8f);
                 
+                var worldPos = transform.TransformPoint(activeCollider.position);
+                var worldRotation = transform.rotation * activeCollider.rotation;
+                
                 var newRadius = Handles.RadiusHandle(
-                    activeCollider.rotation,
-                    activeCollider.position,
+                    worldRotation,
+                    worldPos,
                     activeCollider.radius
                 );
                 
@@ -951,11 +955,12 @@ namespace EnhancedDynamics.Editor
                 // Use yellow color for better contrast
                 Handles.color = new Color(1f, 0.92f, 0.016f, 0.8f); // Yellow
                 
-                // Calculate capsule endpoints
+                // Calculate capsule endpoints in world space
+                var worldPos = transform.TransformPoint(activeCollider.position);
                 var halfHeight = activeCollider.height * 0.5f;
-                var upVector = activeCollider.rotation * Vector3.up;
-                var topPos = activeCollider.position + upVector * halfHeight;
-                var bottomPos = activeCollider.position - upVector * halfHeight;
+                var upVector = transform.rotation * activeCollider.rotation * Vector3.up;
+                var topPos = worldPos + upVector * halfHeight;
+                var bottomPos = worldPos - upVector * halfHeight;
                 
                 // Draw top arrow handle (bigger size)
                 EditorGUI.BeginChangeCheck();
@@ -963,8 +968,9 @@ namespace EnhancedDynamics.Editor
                 if (EditorGUI.EndChangeCheck())
                 {
                     Undo.RecordObject(activeCollider, "Change PhysBone Height");
-                    var localTop = Quaternion.Inverse(activeCollider.rotation) * (newTopPos - activeCollider.position);
-                    activeCollider.height = Mathf.Max(0.01f, localTop.y * 2f);
+                    var delta = Vector3.Project(newTopPos - topPos, upVector);
+                    activeCollider.height += delta.magnitude * 2f * (Vector3.Dot(delta, upVector) > 0 ? 1 : -1);
+                    activeCollider.height = Mathf.Max(0.01f, activeCollider.height);
                     EditorUtility.SetDirty(activeCollider);
                 }
                 
@@ -974,8 +980,9 @@ namespace EnhancedDynamics.Editor
                 if (EditorGUI.EndChangeCheck())
                 {
                     Undo.RecordObject(activeCollider, "Change PhysBone Height");
-                    var localBottom = Quaternion.Inverse(activeCollider.rotation) * (activeCollider.position - newBottomPos);
-                    activeCollider.height = Mathf.Max(0.01f, localBottom.y * 2f);
+                    var delta = Vector3.Project(newBottomPos - bottomPos, -upVector);
+                    activeCollider.height += delta.magnitude * 2f * (Vector3.Dot(delta, -upVector) > 0 ? 1 : -1);
+                    activeCollider.height = Mathf.Max(0.01f, activeCollider.height);
                     EditorUtility.SetDirty(activeCollider);
                 }
                 
@@ -988,15 +995,16 @@ namespace EnhancedDynamics.Editor
             {
                 EditorGUI.BeginChangeCheck();
                 
-                var newPosition = Handles.PositionHandle(
-                    activeCollider.position,
-                    activeCollider.rotation
+                var worldPos = transform.TransformPoint(activeCollider.position);
+                var newWorldPos = Handles.PositionHandle(
+                    worldPos,
+                    transform.rotation * activeCollider.rotation
                 );
                 
                 if (EditorGUI.EndChangeCheck())
                 {
                     Undo.RecordObject(activeCollider, "Move PhysBone Collider");
-                    activeCollider.position = newPosition;
+                    activeCollider.position = transform.InverseTransformPoint(newWorldPos);
                     EditorUtility.SetDirty(activeCollider);
                 }
             }
@@ -1006,20 +1014,20 @@ namespace EnhancedDynamics.Editor
             {
                 EditorGUI.BeginChangeCheck();
                 
-                var newRotation = Handles.RotationHandle(
-                    activeCollider.rotation,
-                    activeCollider.position
+                var worldPos = transform.TransformPoint(activeCollider.position);
+                var worldRotation = transform.rotation * activeCollider.rotation;
+                var newWorldRotation = Handles.RotationHandle(
+                    worldRotation,
+                    worldPos
                 );
                 
                 if (EditorGUI.EndChangeCheck())
                 {
                     Undo.RecordObject(activeCollider, "Rotate PhysBone Collider");
-                    activeCollider.rotation = newRotation;
+                    activeCollider.rotation = Quaternion.Inverse(transform.rotation) * newWorldRotation;
                     EditorUtility.SetDirty(activeCollider);
                 }
             }
-            
-            Handles.matrix = oldMatrix;
         }
     }
 }
