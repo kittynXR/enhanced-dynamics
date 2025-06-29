@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Reflection.Emit;
 using UnityEngine;
 using UnityEditor;
 using HarmonyLib;
@@ -44,7 +45,17 @@ namespace EnhancedDynamics.Editor
             {
                 Debug.Log("[EnhancedDynamics] Static constructor called - Initializing PhysBoneColliderInspectorPatcher...");
                 
-                // Delay initialization to ensure VRChat assemblies are loaded
+                // Clean up any existing harmony instance
+                if (_harmony != null)
+                {
+                    _harmony.UnpatchAll(HarmonyId);
+                    _harmony = null;
+                }
+                
+                // Try immediate initialization
+                Initialize();
+                
+                // Also delay initialization to ensure VRChat assemblies are loaded
                 EditorApplication.delayCall += DelayedInitialize;
             }
             catch (Exception e)
@@ -53,60 +64,99 @@ namespace EnhancedDynamics.Editor
             }
         }
         
+        [MenuItem("Tools/Enhanced Dynamics/Reinitialize Patches")]
+        private static void ReinitializePatches()
+        {
+            Debug.Log("[EnhancedDynamics] Manual reinitialization requested");
+            
+            // Clean up existing patches
+            if (_harmony != null)
+            {
+                _harmony.UnpatchAll(HarmonyId);
+                _harmony = null;
+            }
+            
+            // Reinitialize
+            Initialize();
+        }
+        
         private static void DelayedInitialize()
         {
             Debug.Log("[EnhancedDynamics] Delayed initialization starting...");
-            
-            _harmony = new Harmony(HarmonyId);
-            
-            // Log all VRC assemblies
-            Debug.Log("[EnhancedDynamics] Available VRC assemblies:");
-            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+            Initialize();
+        }
+        
+        private static void Initialize()
+        {
+            try
             {
-                if (assembly.FullName.Contains("VRC"))
+                // Check if already initialized
+                if (_harmony != null)
                 {
-                    Debug.Log($"[EnhancedDynamics]   - {assembly.FullName}");
+                    Debug.Log("[EnhancedDynamics] Already initialized, cleaning up first...");
+                    _harmony.UnpatchAll(HarmonyId);
+                    SceneView.duringSceneGui -= OnSceneGUI;
+                }
+                
+                Debug.Log("[EnhancedDynamics] Starting initialization...");
+                
+                _harmony = new Harmony(HarmonyId);
+                
+                // Log all VRC assemblies
+                Debug.Log("[EnhancedDynamics] Available VRC assemblies:");
+                foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    if (assembly.FullName.Contains("VRC"))
+                    {
+                        Debug.Log($"[EnhancedDynamics]   - {assembly.FullName}");
+                    }
+                }
+                
+                // Patch the inspector
+                PatchInspector();
+                
+                // Patch PropertyField with correct signature
+                PatchPropertyField();
+                
+                // Patch the rotation field method
+                PatchRotationField();
+                
+                // Try patching EditorGUI float/vector fields directly
+                PatchEditorGUIFields();
+                
+                // Patch property wrapper methods
+                PatchPropertyWrappers();
+                
+                // Try patching label methods
+                PatchLabelMethods();
+                
+                // Try to find VRC's internal drawing methods
+                FindAndPatchVRCInternalMethods();
+                
+                // Patch GUILayout rect methods
+                PatchGUILayoutRectMethods();
+                
+                // Subscribe to scene GUI
+                SceneView.duringSceneGui -= OnSceneGUI; // Remove first to avoid duplicates
+                SceneView.duringSceneGui += OnSceneGUI;
+                
+                Debug.Log("[EnhancedDynamics] Initialization complete!");
+                
+                // Log all patched methods
+                Debug.Log("[EnhancedDynamics] Successfully patched methods:");
+                var patchedMethods = Harmony.GetAllPatchedMethods();
+                foreach (var method in patchedMethods)
+                {
+                    var patchInfo = Harmony.GetPatchInfo(method);
+                    if (patchInfo != null && patchInfo.Owners.Contains(HarmonyId))
+                    {
+                        Debug.Log($"[EnhancedDynamics]   - {method.DeclaringType?.FullName}.{method.Name}");
+                    }
                 }
             }
-            
-            // Patch the inspector
-            PatchInspector();
-            
-            // Patch PropertyField with correct signature
-            PatchPropertyField();
-            
-            // Patch the rotation field method
-            PatchRotationField();
-            
-            // Try patching EditorGUI float/vector fields directly
-            PatchEditorGUIFields();
-            
-            // Patch property wrapper methods
-            PatchPropertyWrappers();
-            
-            // Try patching label methods
-            PatchLabelMethods();
-            
-            // Try to find VRC's internal drawing methods
-            FindAndPatchVRCInternalMethods();
-            
-            // Patch GUILayout rect methods
-            PatchGUILayoutRectMethods();
-            
-            // Subscribe to scene GUI
-            SceneView.duringSceneGui += OnSceneGUI;
-            
-            Debug.Log("[EnhancedDynamics] Initialization complete!");
-            
-            // Log all patched methods
-            Debug.Log("[EnhancedDynamics] Successfully patched methods:");
-            var patchedMethods = Harmony.GetAllPatchedMethods();
-            foreach (var method in patchedMethods)
+            catch (Exception e)
             {
-                if (Harmony.GetPatchInfo(method).Owners.Contains(HarmonyId))
-                {
-                    Debug.Log($"[EnhancedDynamics]   - {method.DeclaringType?.FullName}.{method.Name}");
-                }
+                Debug.LogError($"[EnhancedDynamics] Error during initialization: {e}");
             }
         }
         
