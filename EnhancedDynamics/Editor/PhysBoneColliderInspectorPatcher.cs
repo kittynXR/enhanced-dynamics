@@ -33,10 +33,6 @@ namespace EnhancedDynamics.Editor
         private static Dictionary<string, Rect> _lastFieldRects = new Dictionary<string, Rect>();
         private static int _lastControlID;
         
-        // Property tracking
-        private static SerializedObject _currentSerializedObject;
-        private static Dictionary<string, float> _propertyYPositions = new Dictionary<string, float>();
-        private static List<string> _propertiesDrawnThisFrame = new List<string>();
         
         private class GizmoState
         {
@@ -708,23 +704,6 @@ namespace EnhancedDynamics.Editor
         {
             _currentCollider = __instance.target as VRCPhysBoneCollider;
             _isDrawingPhysBoneInspector = _currentCollider != null;
-            
-            if (_isDrawingPhysBoneInspector)
-            {
-                // Clear tracking for new layout pass
-                if (Event.current.type == EventType.Layout)
-                {
-                    _propertiesDrawnThisFrame.Clear();
-                    _propertyYPositions.Clear();
-                }
-                
-                // Try to access the serialized object
-                var serializedObjectField = __instance.GetType().GetProperty("serializedObject", BindingFlags.Public | BindingFlags.Instance);
-                if (serializedObjectField != null)
-                {
-                    _currentSerializedObject = serializedObjectField.GetValue(__instance) as SerializedObject;
-                }
-            }
         }
         
         private static void OnInspectorGUI_Postfix(UnityEditor.Editor __instance)
@@ -743,64 +722,6 @@ namespace EnhancedDynamics.Editor
                 _gizmoStates[instanceId] = new GizmoState();
             }
             var state = _gizmoStates[instanceId];
-            
-            // Try a different approach - manually check each property and add buttons
-            if (_currentSerializedObject != null && Event.current.type == EventType.Layout)
-            {
-                // Save current indent level
-                var savedIndent = EditorGUI.indentLevel;
-                EditorGUI.indentLevel = 0;
-                
-                // Radius button (not for Plane)
-                if (_currentCollider.shapeType != VRCPhysBoneColliderBase.ShapeType.Plane)
-                {
-                    var radiusProp = _currentSerializedObject.FindProperty("radius");
-                    if (radiusProp != null && !_propertiesDrawnThisFrame.Contains("radius"))
-                    {
-                        _propertiesDrawnThisFrame.Add("radius");
-                        EditorGUILayout.BeginHorizontal();
-                        EditorGUILayout.Space();
-                        DrawSmallInlineButton("radius", state.radiusGizmo, () => {
-                            state.radiusGizmo = !state.radiusGizmo;
-                            SceneView.RepaintAll();
-                        });
-                        EditorGUILayout.EndHorizontal();
-                    }
-                }
-                
-                // Height button (only for Capsule)
-                if (_currentCollider.shapeType == VRCPhysBoneColliderBase.ShapeType.Capsule)
-                {
-                    var heightProp = _currentSerializedObject.FindProperty("height");
-                    if (heightProp != null && !_propertiesDrawnThisFrame.Contains("height"))
-                    {
-                        _propertiesDrawnThisFrame.Add("height");
-                        EditorGUILayout.BeginHorizontal();
-                        EditorGUILayout.Space();
-                        DrawSmallInlineButton("height", state.heightGizmo, () => {
-                            state.heightGizmo = !state.heightGizmo;
-                            SceneView.RepaintAll();
-                        });
-                        EditorGUILayout.EndHorizontal();
-                    }
-                }
-                
-                // Position button
-                var positionProp = _currentSerializedObject.FindProperty("position");
-                if (positionProp != null && !_propertiesDrawnThisFrame.Contains("position"))
-                {
-                    _propertiesDrawnThisFrame.Add("position");
-                    EditorGUILayout.BeginHorizontal();
-                    EditorGUILayout.Space();
-                    DrawSmallInlineButton("position", state.positionGizmo, () => {
-                        state.positionGizmo = !state.positionGizmo;
-                        SceneView.RepaintAll();
-                    });
-                    EditorGUILayout.EndHorizontal();
-                }
-                
-                EditorGUI.indentLevel = savedIndent;
-            }
             
             // Keep the fallback section at the bottom
             if (_currentCollider != null)
@@ -1123,27 +1044,6 @@ namespace EnhancedDynamics.Editor
             }
         }
         
-        private static void DrawSmallInlineButton(string propertyName, bool isActive, System.Action onClick)
-        {
-            var oldColor = GUI.backgroundColor;
-            GUI.backgroundColor = isActive ? Color.green : Color.red;
-            
-            string buttonLabel = propertyName switch
-            {
-                "radius" => "R",
-                "height" => "H", 
-                "position" => "P",
-                "rotation" => "↻",
-                _ => "?"
-            };
-            
-            if (GUILayout.Button($"Toggle {buttonLabel} Gizmo", GUILayout.Height(18), GUILayout.ExpandWidth(false)))
-            {
-                onClick?.Invoke();
-            }
-            
-            GUI.backgroundColor = oldColor;
-        }
         
         private static void DrawInlineButton(string propertyName)
         {
