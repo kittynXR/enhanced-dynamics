@@ -27,6 +27,8 @@ namespace EnhancedDynamics.Editor
         private static Rect _lastPropertyRect;
         private static bool _shouldDrawButtonAfterProperty;
         private static string _pendingButtonProperty;
+        private static Dictionary<string, Rect> _lastFieldRects = new Dictionary<string, Rect>();
+        private static int _lastControlID;
         
         private class GizmoState
         {
@@ -38,10 +40,17 @@ namespace EnhancedDynamics.Editor
         
         static PhysBoneColliderInspectorPatcher()
         {
-            Debug.Log("[EnhancedDynamics] Initializing PhysBoneColliderInspectorPatcher...");
-            
-            // Delay initialization to ensure VRChat assemblies are loaded
-            EditorApplication.delayCall += DelayedInitialize;
+            try
+            {
+                Debug.Log("[EnhancedDynamics] Static constructor called - Initializing PhysBoneColliderInspectorPatcher...");
+                
+                // Delay initialization to ensure VRChat assemblies are loaded
+                EditorApplication.delayCall += DelayedInitialize;
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[EnhancedDynamics] Error in static constructor: {e}");
+            }
         }
         
         private static void DelayedInitialize()
@@ -77,6 +86,12 @@ namespace EnhancedDynamics.Editor
             
             // Try patching label methods
             PatchLabelMethods();
+            
+            // Try to find VRC's internal drawing methods
+            FindAndPatchVRCInternalMethods();
+            
+            // Patch GUILayout rect methods
+            PatchGUILayoutRectMethods();
             
             // Subscribe to scene GUI
             SceneView.duringSceneGui += OnSceneGUI;
@@ -444,6 +459,141 @@ namespace EnhancedDynamics.Editor
             }
         }
         
+        private static void FindAndPatchVRCInternalMethods()
+        {
+            try
+            {
+                Debug.Log("[EnhancedDynamics] Searching for VRC internal drawing methods...");
+                
+                // Find the VRCPhysBoneColliderEditor type
+                Type vrcEditorType = null;
+                foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    if (assembly.FullName.Contains("VRC.SDK3.Dynamics.PhysBone.Editor"))
+                    {
+                        foreach (var type in assembly.GetTypes())
+                        {
+                            if (type.Name == "VRCPhysBoneColliderEditor")
+                            {
+                                vrcEditorType = type;
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                if (vrcEditorType != null)
+                {
+                    Debug.Log($"[EnhancedDynamics] Found VRCPhysBoneColliderEditor type: {vrcEditorType.FullName}");
+                    
+                    // Get ALL methods, including private ones
+                    var allMethods = vrcEditorType.GetMethods(
+                        BindingFlags.Public | BindingFlags.NonPublic | 
+                        BindingFlags.Instance | BindingFlags.Static | 
+                        BindingFlags.DeclaredOnly);
+                    
+                    Debug.Log($"[EnhancedDynamics] Found {allMethods.Length} methods in VRCPhysBoneColliderEditor:");
+                    
+                    foreach (var method in allMethods)
+                    {
+                        Debug.Log($"[EnhancedDynamics]   - {method.Name} ({method.IsPrivate ? "private" : "public"}, {method.IsStatic ? "static" : "instance"})");
+                        
+                        // Try to patch any method that might be drawing our fields
+                        if (method.Name.ToLower().Contains("draw") || 
+                            method.Name.ToLower().Contains("radius") || 
+                            method.Name.ToLower().Contains("height") || 
+                            method.Name.ToLower().Contains("position") ||
+                            method.Name.ToLower().Contains("shape") ||
+                            method.Name.ToLower().Contains("field"))
+                        {
+                            try
+                            {
+                                var transpiler = typeof(PhysBoneColliderInspectorPatcher).GetMethod(
+                                    nameof(GenericTranspiler),
+                                    BindingFlags.Static | BindingFlags.NonPublic);
+                                
+                                _harmony.Patch(method, transpiler: new HarmonyMethod(transpiler));
+                                Debug.Log($"[EnhancedDynamics] Successfully patched: {method.Name}");
+                            }
+                            catch (Exception e)
+                            {
+                                Debug.Log($"[EnhancedDynamics] Could not patch {method.Name}: {e.Message}");
+                            }
+                        }
+                    }
+                    
+                    // Also check the base class methods
+                    var baseType = vrcEditorType.BaseType;
+                    if (baseType != null)
+                    {
+                        Debug.Log($"[EnhancedDynamics] Base type: {baseType.FullName}");
+                    }
+                }
+                
+                // Also check InspectorUtil for any field drawing methods
+                Type inspectorUtilType = null;
+                foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    if (assembly.FullName.Contains("VRC"))
+                    {
+                        var type = assembly.GetType("InspectorUtil");
+                        if (type != null)
+                        {
+                            inspectorUtilType = type;
+                            break;
+                        }
+                    }
+                }
+                
+                if (inspectorUtilType != null)
+                {
+                    var utilMethods = inspectorUtilType.GetMethods(BindingFlags.Public | BindingFlags.Static);
+                    Debug.Log($"[EnhancedDynamics] InspectorUtil methods:");
+                    foreach (var method in utilMethods)
+                    {
+                        Debug.Log($"[EnhancedDynamics]   - {method.Name}");
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[EnhancedDynamics] Error in FindAndPatchVRCInternalMethods: {e}");
+            }
+        }
+        
+        private static IEnumerable<CodeInstruction> GenericTranspiler(IEnumerable<CodeInstruction> instructions, MethodBase method)
+        {
+            Debug.Log($"[EnhancedDynamics] Transpiling method: {method.Name}");
+            return instructions;
+        }
+        
+        private static void PatchGUILayoutRectMethods()
+        {
+            try
+            {
+                Debug.Log("[EnhancedDynamics] Patching GUILayout rect methods...");
+                
+                // Patch GetRect method
+                var getRectMethod = typeof(GUILayoutUtility).GetMethod("GetRect",
+                    BindingFlags.Public | BindingFlags.Static,
+                    null,
+                    new Type[] { typeof(float), typeof(float), typeof(GUILayoutOption[]) },
+                    null);
+                
+                if (getRectMethod != null)
+                {
+                    var postfix = typeof(PhysBoneColliderInspectorPatcher).GetMethod(nameof(GetRect_Postfix),
+                        BindingFlags.Static | BindingFlags.NonPublic);
+                    _harmony.Patch(getRectMethod, postfix: new HarmonyMethod(postfix));
+                    Debug.Log("[EnhancedDynamics] Patched GUILayoutUtility.GetRect");
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[EnhancedDynamics] Failed to patch GUILayout rect methods: {e}");
+            }
+        }
+        
         private static SerializedProperty _lastFoundProperty;
         private static SerializedProperty _currentProperty;
         private static string _currentPropertyLabel;
@@ -501,6 +651,11 @@ namespace EnhancedDynamics.Editor
         {
             _currentCollider = __instance.target as VRCPhysBoneCollider;
             _isDrawingPhysBoneInspector = _currentCollider != null;
+            
+            if (_isDrawingPhysBoneInspector)
+            {
+                Debug.Log("[EnhancedDynamics] Starting to draw PhysBone inspector");
+            }
         }
         
         private static void OnInspectorGUI_Postfix(UnityEditor.Editor __instance)
@@ -818,6 +973,26 @@ namespace EnhancedDynamics.Editor
                 {
                     _pendingButtonProperty = label.ToLower();
                     _shouldDrawButtonAfterProperty = true;
+                }
+            }
+        }
+        
+        private static void GetRect_Postfix(Rect __result, float width, float height)
+        {
+            if (!_isDrawingPhysBoneInspector || _currentCollider == null)
+                return;
+            
+            // Track the last rect created
+            _lastPropertyRect = __result;
+            
+            // If we have a pending property, check if this rect might be for it
+            if (!string.IsNullOrEmpty(_lastLabel))
+            {
+                Debug.Log($"[EnhancedDynamics] GetRect called after label: {_lastLabel}, rect: {__result}");
+                
+                if (_lastLabel == "Radius" || _lastLabel == "Height" || _lastLabel == "Position" || _lastLabel == "Rotation")
+                {
+                    _lastFieldRects[_lastLabel.ToLower()] = __result;
                 }
             }
         }
