@@ -37,7 +37,6 @@ namespace EnhancedDynamics.Editor
         private static SerializedObject _currentSerializedObject;
         private static Dictionary<string, float> _propertyYPositions = new Dictionary<string, float>();
         private static List<string> _propertiesDrawnThisFrame = new List<string>();
-        private static int _lastEventCount = -1;
         
         private class GizmoState
         {
@@ -712,10 +711,9 @@ namespace EnhancedDynamics.Editor
             
             if (_isDrawingPhysBoneInspector)
             {
-                // Clear tracking for new frame
-                if (Event.current.frameCount != _lastEventCount)
+                // Clear tracking for new layout pass
+                if (Event.current.type == EventType.Layout)
                 {
-                    _lastEventCount = Event.current.frameCount;
                     _propertiesDrawnThisFrame.Clear();
                     _propertyYPositions.Clear();
                 }
