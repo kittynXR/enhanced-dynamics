@@ -5,16 +5,10 @@ using UnityEngine;
 
 namespace EnhancedDynamics.Runtime
 {
-    [InitializeOnLoad]
     public static class HarmonyPatcher
     {
         private static Harmony _harmony;
         private const string HarmonyId = "com.enhanceddynamics.physbone";
-        
-        static HarmonyPatcher()
-        {
-            Initialize();
-        }
         
         public static void Initialize()
         {
