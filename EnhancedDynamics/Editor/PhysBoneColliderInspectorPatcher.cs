@@ -946,7 +946,8 @@ namespace EnhancedDynamics.Editor
             // Draw height gizmo for capsule
             if (activeState.heightGizmo && activeCollider.shapeType == VRCPhysBoneColliderBase.ShapeType.Capsule)
             {
-                Handles.color = new Color(0f, 1f, 0.5f, 0.8f);
+                // Use yellow color for better contrast
+                Handles.color = new Color(1f, 0.92f, 0.016f, 0.8f); // Yellow
                 
                 // Calculate capsule endpoints
                 var halfHeight = activeCollider.height * 0.5f;
@@ -954,9 +955,9 @@ namespace EnhancedDynamics.Editor
                 var topPos = activeCollider.position + upVector * halfHeight;
                 var bottomPos = activeCollider.position - upVector * halfHeight;
                 
-                // Draw top arrow handle
+                // Draw top arrow handle (bigger size)
                 EditorGUI.BeginChangeCheck();
-                var newTopPos = Handles.Slider(topPos, upVector, HandleUtility.GetHandleSize(topPos) * 0.5f, Handles.ArrowHandleCap, 0.1f);
+                var newTopPos = Handles.Slider(topPos, upVector, HandleUtility.GetHandleSize(topPos) * 1.0f, Handles.ArrowHandleCap, 0.1f);
                 if (EditorGUI.EndChangeCheck())
                 {
                     Undo.RecordObject(activeCollider, "Change PhysBone Height");
@@ -965,9 +966,9 @@ namespace EnhancedDynamics.Editor
                     EditorUtility.SetDirty(activeCollider);
                 }
                 
-                // Draw bottom arrow handle
+                // Draw bottom arrow handle (bigger size)
                 EditorGUI.BeginChangeCheck();
-                var newBottomPos = Handles.Slider(bottomPos, -upVector, HandleUtility.GetHandleSize(bottomPos) * 0.5f, Handles.ArrowHandleCap, 0.1f);
+                var newBottomPos = Handles.Slider(bottomPos, -upVector, HandleUtility.GetHandleSize(bottomPos) * 1.0f, Handles.ArrowHandleCap, 0.1f);
                 if (EditorGUI.EndChangeCheck())
                 {
                     Undo.RecordObject(activeCollider, "Change PhysBone Height");
@@ -976,8 +977,11 @@ namespace EnhancedDynamics.Editor
                     EditorUtility.SetDirty(activeCollider);
                 }
                 
-                // Draw connecting line
+                // Draw connecting line with increased thickness
+                var oldThickness = Handles.lineThickness;
+                Handles.lineThickness = 2.0f;
                 Handles.DrawLine(topPos, bottomPos);
+                Handles.lineThickness = oldThickness;
             }
             
             // Draw position gizmo
