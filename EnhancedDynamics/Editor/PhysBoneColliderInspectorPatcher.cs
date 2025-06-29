@@ -24,6 +24,9 @@ namespace EnhancedDynamics.Editor
         
         // GUI content
         private static GUIStyle _miniButtonStyle;
+        private static Rect _lastPropertyRect;
+        private static bool _shouldDrawButtonAfterProperty;
+        private static string _pendingButtonProperty;
         
         private class GizmoState
         {
@@ -47,6 +50,16 @@ namespace EnhancedDynamics.Editor
             
             _harmony = new Harmony(HarmonyId);
             
+            // Log all VRC assemblies
+            Debug.Log("[EnhancedDynamics] Available VRC assemblies:");
+            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                if (assembly.FullName.Contains("VRC"))
+                {
+                    Debug.Log($"[EnhancedDynamics]   - {assembly.FullName}");
+                }
+            }
+            
             // Patch the inspector
             PatchInspector();
             
@@ -59,10 +72,27 @@ namespace EnhancedDynamics.Editor
             // Try patching EditorGUI float/vector fields directly
             PatchEditorGUIFields();
             
+            // Patch property wrapper methods
+            PatchPropertyWrappers();
+            
+            // Try patching label methods
+            PatchLabelMethods();
+            
             // Subscribe to scene GUI
             SceneView.duringSceneGui += OnSceneGUI;
             
             Debug.Log("[EnhancedDynamics] Initialization complete!");
+            
+            // Log all patched methods
+            Debug.Log("[EnhancedDynamics] Successfully patched methods:");
+            var patchedMethods = Harmony.GetAllPatchedMethods();
+            foreach (var method in patchedMethods)
+            {
+                if (Harmony.GetPatchInfo(method).Owners.Contains(HarmonyId))
+                {
+                    Debug.Log($"[EnhancedDynamics]   - {method.DeclaringType?.FullName}.{method.Name}");
+                }
+            }
         }
         
         private static void PatchInspector()
@@ -262,7 +292,7 @@ namespace EnhancedDynamics.Editor
             {
                 Debug.Log("[EnhancedDynamics] Patching EditorGUI field methods...");
                 
-                // Patch FloatField
+                // Patch FloatField (both Layout and non-Layout versions)
                 var floatFieldMethods = typeof(EditorGUILayout).GetMethods(BindingFlags.Public | BindingFlags.Static)
                     .Where(m => m.Name == "FloatField").ToList();
                 
@@ -273,12 +303,28 @@ namespace EnhancedDynamics.Editor
                         var postfix = typeof(PhysBoneColliderInspectorPatcher).GetMethod(nameof(FloatField_Postfix),
                             BindingFlags.Static | BindingFlags.NonPublic);
                         _harmony.Patch(method, postfix: new HarmonyMethod(postfix));
-                        Debug.Log($"[EnhancedDynamics] Patched FloatField overload with {method.GetParameters().Length} parameters");
+                        Debug.Log($"[EnhancedDynamics] Patched EditorGUILayout.FloatField with {method.GetParameters().Length} parameters");
                     }
                     catch { }
                 }
                 
-                // Patch Vector3Field
+                // Also patch non-Layout FloatField
+                var editorGUIFloatFields = typeof(EditorGUI).GetMethods(BindingFlags.Public | BindingFlags.Static)
+                    .Where(m => m.Name == "FloatField").ToList();
+                
+                foreach (var method in editorGUIFloatFields)
+                {
+                    try
+                    {
+                        var postfix = typeof(PhysBoneColliderInspectorPatcher).GetMethod(nameof(EditorGUI_FloatField_Postfix),
+                            BindingFlags.Static | BindingFlags.NonPublic);
+                        _harmony.Patch(method, postfix: new HarmonyMethod(postfix));
+                        Debug.Log($"[EnhancedDynamics] Patched EditorGUI.FloatField with {method.GetParameters().Length} parameters");
+                    }
+                    catch { }
+                }
+                
+                // Patch Vector3Field (both versions)
                 var vector3FieldMethods = typeof(EditorGUILayout).GetMethods(BindingFlags.Public | BindingFlags.Static)
                     .Where(m => m.Name == "Vector3Field").ToList();
                 
@@ -289,7 +335,22 @@ namespace EnhancedDynamics.Editor
                         var postfix = typeof(PhysBoneColliderInspectorPatcher).GetMethod(nameof(Vector3Field_Postfix),
                             BindingFlags.Static | BindingFlags.NonPublic);
                         _harmony.Patch(method, postfix: new HarmonyMethod(postfix));
-                        Debug.Log($"[EnhancedDynamics] Patched Vector3Field overload with {method.GetParameters().Length} parameters");
+                        Debug.Log($"[EnhancedDynamics] Patched EditorGUILayout.Vector3Field with {method.GetParameters().Length} parameters");
+                    }
+                    catch { }
+                }
+                
+                var editorGUIVector3Fields = typeof(EditorGUI).GetMethods(BindingFlags.Public | BindingFlags.Static)
+                    .Where(m => m.Name == "Vector3Field").ToList();
+                
+                foreach (var method in editorGUIVector3Fields)
+                {
+                    try
+                    {
+                        var postfix = typeof(PhysBoneColliderInspectorPatcher).GetMethod(nameof(EditorGUI_Vector3Field_Postfix),
+                            BindingFlags.Static | BindingFlags.NonPublic);
+                        _harmony.Patch(method, postfix: new HarmonyMethod(postfix));
+                        Debug.Log($"[EnhancedDynamics] Patched EditorGUI.Vector3Field with {method.GetParameters().Length} parameters");
                     }
                     catch { }
                 }
@@ -300,7 +361,93 @@ namespace EnhancedDynamics.Editor
             }
         }
         
+        private static void PatchPropertyWrappers()
+        {
+            try
+            {
+                Debug.Log("[EnhancedDynamics] Patching property wrapper methods...");
+                
+                // Patch BeginProperty
+                var beginPropertyMethod = typeof(EditorGUI).GetMethod("BeginProperty",
+                    BindingFlags.Public | BindingFlags.Static,
+                    null,
+                    new Type[] { typeof(Rect), typeof(GUIContent), typeof(SerializedProperty) },
+                    null);
+                
+                if (beginPropertyMethod != null)
+                {
+                    var postfix = typeof(PhysBoneColliderInspectorPatcher).GetMethod(nameof(BeginProperty_Postfix),
+                        BindingFlags.Static | BindingFlags.NonPublic);
+                    _harmony.Patch(beginPropertyMethod, postfix: new HarmonyMethod(postfix));
+                    Debug.Log("[EnhancedDynamics] Patched EditorGUI.BeginProperty");
+                }
+                
+                // Patch EndProperty
+                var endPropertyMethod = typeof(EditorGUI).GetMethod("EndProperty",
+                    BindingFlags.Public | BindingFlags.Static);
+                
+                if (endPropertyMethod != null)
+                {
+                    var postfix = typeof(PhysBoneColliderInspectorPatcher).GetMethod(nameof(EndProperty_Postfix),
+                        BindingFlags.Static | BindingFlags.NonPublic);
+                    _harmony.Patch(endPropertyMethod, postfix: new HarmonyMethod(postfix));
+                    Debug.Log("[EnhancedDynamics] Patched EditorGUI.EndProperty");
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[EnhancedDynamics] Failed to patch property wrappers: {e}");
+            }
+        }
+        
+        private static void PatchLabelMethods()
+        {
+            try
+            {
+                Debug.Log("[EnhancedDynamics] Patching label methods...");
+                
+                // Patch PrefixLabel
+                var prefixLabelMethods = typeof(EditorGUILayout).GetMethods(BindingFlags.Public | BindingFlags.Static)
+                    .Where(m => m.Name == "PrefixLabel").ToList();
+                
+                foreach (var method in prefixLabelMethods)
+                {
+                    try
+                    {
+                        var postfix = typeof(PhysBoneColliderInspectorPatcher).GetMethod(nameof(PrefixLabel_Postfix),
+                            BindingFlags.Static | BindingFlags.NonPublic);
+                        _harmony.Patch(method, postfix: new HarmonyMethod(postfix));
+                        Debug.Log($"[EnhancedDynamics] Patched PrefixLabel with {method.GetParameters().Length} parameters");
+                    }
+                    catch { }
+                }
+                
+                // Also patch LabelField
+                var labelFieldMethods = typeof(EditorGUILayout).GetMethods(BindingFlags.Public | BindingFlags.Static)
+                    .Where(m => m.Name == "LabelField").ToList();
+                
+                foreach (var method in labelFieldMethods)
+                {
+                    try
+                    {
+                        var postfix = typeof(PhysBoneColliderInspectorPatcher).GetMethod(nameof(LabelField_Postfix),
+                            BindingFlags.Static | BindingFlags.NonPublic);
+                        _harmony.Patch(method, postfix: new HarmonyMethod(postfix));
+                        Debug.Log($"[EnhancedDynamics] Patched LabelField with {method.GetParameters().Length} parameters");
+                    }
+                    catch { }
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[EnhancedDynamics] Failed to patch label methods: {e}");
+            }
+        }
+        
         private static SerializedProperty _lastFoundProperty;
+        private static SerializedProperty _currentProperty;
+        private static string _currentPropertyLabel;
+        private static string _lastLabel;
         
         private static void FindProperty_Postfix(SerializedProperty __result, string propertyPath)
         {
@@ -311,6 +458,34 @@ namespace EnhancedDynamics.Editor
                 {
                     _lastFoundProperty = __result;
                 }
+            }
+        }
+        
+        private static void BeginProperty_Postfix(Rect position, GUIContent label, SerializedProperty property)
+        {
+            if (_isDrawingPhysBoneInspector && property != null)
+            {
+                _currentProperty = property;
+                _currentPropertyLabel = label?.text;
+                Debug.Log($"[EnhancedDynamics] BeginProperty: {property.name} (Label: {label?.text})");
+            }
+        }
+        
+        private static void EndProperty_Postfix()
+        {
+            if (_isDrawingPhysBoneInspector && _currentProperty != null)
+            {
+                Debug.Log($"[EnhancedDynamics] EndProperty: {_currentProperty.name}");
+                
+                // Check if we just finished drawing one of our target properties
+                if (_currentProperty.name == "radius" || _currentProperty.name == "height" || 
+                    _currentProperty.name == "position" || _currentProperty.name == "rotation")
+                {
+                    DrawInlineButton(_currentProperty.name);
+                }
+                
+                _currentProperty = null;
+                _currentPropertyLabel = null;
             }
         }
         
@@ -330,7 +505,15 @@ namespace EnhancedDynamics.Editor
         
         private static void OnInspectorGUI_Postfix(UnityEditor.Editor __instance)
         {
-            // Try a different approach - add buttons for all fields at once
+            // Check if we have a pending button to draw
+            if (_shouldDrawButtonAfterProperty && !string.IsNullOrEmpty(_pendingButtonProperty))
+            {
+                DrawInlineButton(_pendingButtonProperty);
+                _shouldDrawButtonAfterProperty = false;
+                _pendingButtonProperty = null;
+            }
+            
+            // Keep the fallback section at the bottom
             var collider = __instance.target as VRCPhysBoneCollider;
             if (collider != null)
             {
@@ -341,7 +524,7 @@ namespace EnhancedDynamics.Editor
                 }
                 var state = _gizmoStates[instanceId];
                 
-                // Add a section for all gizmo buttons
+                // Add a section for all gizmo buttons as fallback
                 EditorGUILayout.Space(10);
                 
                 // Create a box for better visual separation
@@ -524,6 +707,118 @@ namespace EnhancedDynamics.Editor
             if (label == "Position")
             {
                 DrawInlineButton("position");
+            }
+        }
+        
+        private static void EditorGUI_FloatField_Postfix(float __result, object[] __args)
+        {
+            if (!_isDrawingPhysBoneInspector || _currentCollider == null)
+                return;
+            
+            // EditorGUI.FloatField has different parameter order - Rect is first
+            string label = null;
+            GUIContent content = null;
+            
+            // Try to find label in args (skip Rect which is usually first)
+            for (int i = 1; i < __args.Length; i++)
+            {
+                if (__args[i] is string str)
+                {
+                    label = str;
+                    break;
+                }
+                else if (__args[i] is GUIContent gc)
+                {
+                    content = gc;
+                    label = gc.text;
+                    break;
+                }
+            }
+            
+            Debug.Log($"[EnhancedDynamics] EditorGUI.FloatField_Postfix - Label: {label ?? "null"}, Args: {__args.Length}");
+            
+            if (label == "Radius" || label == "Height")
+            {
+                DrawInlineButton(label.ToLower());
+            }
+        }
+        
+        private static void EditorGUI_Vector3Field_Postfix(Vector3 __result, object[] __args)
+        {
+            if (!_isDrawingPhysBoneInspector || _currentCollider == null)
+                return;
+            
+            // Similar to FloatField
+            string label = null;
+            for (int i = 1; i < __args.Length; i++)
+            {
+                if (__args[i] is string str)
+                {
+                    label = str;
+                    break;
+                }
+                else if (__args[i] is GUIContent content)
+                {
+                    label = content.text;
+                    break;
+                }
+            }
+            
+            Debug.Log($"[EnhancedDynamics] EditorGUI.Vector3Field_Postfix - Label: {label ?? "null"}");
+            
+            if (label == "Position")
+            {
+                DrawInlineButton("position");
+            }
+        }
+        
+        private static void PrefixLabel_Postfix(object[] __args)
+        {
+            if (!_isDrawingPhysBoneInspector || _currentCollider == null)
+                return;
+            
+            // Extract label from args
+            string label = null;
+            if (__args.Length > 0)
+            {
+                if (__args[0] is string str)
+                    label = str;
+                else if (__args[0] is GUIContent content)
+                    label = content.text;
+            }
+            
+            if (!string.IsNullOrEmpty(label))
+            {
+                _lastLabel = label;
+                Debug.Log($"[EnhancedDynamics] PrefixLabel: {label}");
+            }
+        }
+        
+        private static void LabelField_Postfix(object[] __args)
+        {
+            if (!_isDrawingPhysBoneInspector || _currentCollider == null)
+                return;
+            
+            // Extract label from args
+            string label = null;
+            if (__args.Length > 0)
+            {
+                if (__args[0] is string str)
+                    label = str;
+                else if (__args[0] is GUIContent content)
+                    label = content.text;
+            }
+            
+            if (!string.IsNullOrEmpty(label))
+            {
+                Debug.Log($"[EnhancedDynamics] LabelField: {label}");
+                
+                // Check if this is one of our target labels
+                if (label == "Radius" || label == "Height" || label == "Position" || label == "Rotation")
+                {
+                    _pendingButtonProperty = label.ToLower();
+                    _shouldDrawButtonAfterProperty = true;
+                }
             }
         }
         
