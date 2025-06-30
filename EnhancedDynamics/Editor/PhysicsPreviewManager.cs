@@ -43,6 +43,7 @@ namespace EnhancedDynamics.Editor
             public float gravity;
             public float gravityFalloff;
             public float immobilize;
+            public bool hasImmobilize;
             
             // Transform states
             public Dictionary<Transform, TransformState> boneTransforms = new Dictionary<Transform, TransformState>();
@@ -170,6 +171,97 @@ namespace EnhancedDynamics.Editor
             }
         }
         
+        private static float GetImmobilize(VRCPhysBone physBone)
+        {
+            try
+            {
+                var prop = typeof(VRCPhysBone).GetProperty("immobilize", BindingFlags.Public | BindingFlags.Instance);
+                if (prop != null)
+                {
+                    return (float)prop.GetValue(physBone);
+                }
+                
+                var field = typeof(VRCPhysBone).GetField("immobilize", BindingFlags.Public | BindingFlags.Instance);
+                if (field != null)
+                {
+                    return (float)field.GetValue(physBone);
+                }
+            }
+            catch { }
+            
+            return 0f;
+        }
+        
+        private static void SetImmobilize(VRCPhysBone physBone, float value)
+        {
+            try
+            {
+                var prop = typeof(VRCPhysBone).GetProperty("immobilize", BindingFlags.Public | BindingFlags.Instance);
+                if (prop != null && prop.CanWrite)
+                {
+                    prop.SetValue(physBone, value);
+                    return;
+                }
+                
+                var field = typeof(VRCPhysBone).GetField("immobilize", BindingFlags.Public | BindingFlags.Instance);
+                if (field != null)
+                {
+                    field.SetValue(physBone, value);
+                }
+            }
+            catch { }
+        }
+        
+        private static List<Transform> GetAffectedTransforms(VRCPhysBone physBone)
+        {
+            try
+            {
+                var method = typeof(VRCPhysBone).GetMethod("GetAffectedTransforms", BindingFlags.Public | BindingFlags.Instance);
+                if (method != null)
+                {
+                    return method.Invoke(physBone, null) as List<Transform>;
+                }
+            }
+            catch { }
+            
+            // Fallback: get transforms under the root
+            var root = physBone.GetRootTransform();
+            if (root != null)
+            {
+                var transforms = new List<Transform>();
+                GetTransformsRecursive(root, transforms, 10); // Max depth
+                return transforms;
+            }
+            
+            return new List<Transform>();
+        }
+        
+        private static void GetTransformsRecursive(Transform current, List<Transform> list, int maxDepth)
+        {
+            if (maxDepth <= 0) return;
+            
+            list.Add(current);
+            foreach (Transform child in current)
+            {
+                GetTransformsRecursive(child, list, maxDepth - 1);
+            }
+        }
+        
+        private static bool HasImmobilize(VRCPhysBone physBone)
+        {
+            try
+            {
+                var prop = typeof(VRCPhysBone).GetProperty("immobilize", BindingFlags.Public | BindingFlags.Instance);
+                if (prop != null) return true;
+                
+                var field = typeof(VRCPhysBone).GetField("immobilize", BindingFlags.Public | BindingFlags.Instance);
+                if (field != null) return true;
+            }
+            catch { }
+            
+            return false;
+        }
+        
         private static void StoreOriginalStates()
         {
             foreach (var physBone in _activePhysBones)
@@ -181,11 +273,16 @@ namespace EnhancedDynamics.Editor
                     stiffness = physBone.stiffness,
                     gravity = physBone.gravity,
                     gravityFalloff = physBone.gravityFalloff,
-                    immobilize = physBone.immobilize
+                    hasImmobilize = HasImmobilize(physBone)
                 };
                 
+                if (state.hasImmobilize)
+                {
+                    state.immobilize = GetImmobilize(physBone);
+                }
+                
                 // Store transform states for all affected bones
-                var transforms = physBone.GetAffectedTransforms();
+                var transforms = GetAffectedTransforms(physBone);
                 if (transforms != null)
                 {
                     foreach (var transform in transforms)
@@ -222,7 +319,11 @@ namespace EnhancedDynamics.Editor
                 physBone.stiffness = state.stiffness;
                 physBone.gravity = state.gravity;
                 physBone.gravityFalloff = state.gravityFalloff;
-                physBone.immobilize = state.immobilize;
+                
+                if (state.hasImmobilize)
+                {
+                    SetImmobilize(physBone, state.immobilize);
+                }
                 
                 // Reset simulator if exists
                 if (_simulators.ContainsKey(physBone))
@@ -327,7 +428,12 @@ namespace EnhancedDynamics.Editor
             state.stiffness = physBone.stiffness;
             state.gravity = physBone.gravity;
             state.gravityFalloff = physBone.gravityFalloff;
-            state.immobilize = physBone.immobilize;
+            
+            if (HasImmobilize(physBone))
+            {
+                state.hasImmobilize = true;
+                state.immobilize = GetImmobilize(physBone);
+            }
         }
         
         private static void DrawSceneGUI(SceneView sceneView)

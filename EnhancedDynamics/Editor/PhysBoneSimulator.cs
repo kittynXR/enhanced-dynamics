@@ -118,8 +118,18 @@ namespace EnhancedDynamics.Editor
         {
             _bones.Clear();
             
-            // Get affected transforms
-            var transforms = _physBone.GetAffectedTransforms();
+            // Try to get affected transforms via reflection
+            List<Transform> transforms = null;
+            try
+            {
+                var getAffectedMethod = typeof(VRCPhysBone).GetMethod("GetAffectedTransforms", BindingFlags.Public | BindingFlags.Instance);
+                if (getAffectedMethod != null)
+                {
+                    transforms = getAffectedMethod.Invoke(_physBone, null) as List<Transform>;
+                }
+            }
+            catch { }
+            
             if (transforms == null || transforms.Count == 0)
             {
                 // Fallback: build chain from root
@@ -181,7 +191,8 @@ namespace EnhancedDynamics.Editor
             _bones.Add(bone);
             
             // Add children up to max chain length
-            if (_bones.Count < _physBone.maxChainLength)
+            int maxChainLength = GetMaxChainLength();
+            if (_bones.Count < maxChainLength)
             {
                 foreach (Transform child in current)
                 {
@@ -193,10 +204,95 @@ namespace EnhancedDynamics.Editor
             }
         }
         
+        private int GetMaxChainLength()
+        {
+            try
+            {
+                var prop = typeof(VRCPhysBone).GetProperty("maxChainLength", BindingFlags.Public | BindingFlags.Instance);
+                if (prop != null)
+                {
+                    return (int)prop.GetValue(_physBone);
+                }
+                
+                var field = typeof(VRCPhysBone).GetField("maxChainLength", BindingFlags.Public | BindingFlags.Instance);
+                if (field != null)
+                {
+                    return (int)field.GetValue(_physBone);
+                }
+            }
+            catch { }
+            
+            return 10; // Default fallback
+        }
+        
+        private float GetImmobilize()
+        {
+            try
+            {
+                var prop = typeof(VRCPhysBone).GetProperty("immobilize", BindingFlags.Public | BindingFlags.Instance);
+                if (prop != null)
+                {
+                    return (float)prop.GetValue(_physBone);
+                }
+                
+                var field = typeof(VRCPhysBone).GetField("immobilize", BindingFlags.Public | BindingFlags.Instance);
+                if (field != null)
+                {
+                    return (float)field.GetValue(_physBone);
+                }
+            }
+            catch { }
+            
+            return 0f; // Default fallback
+        }
+        
+        private List<Transform> GetExclusions()
+        {
+            try
+            {
+                var prop = typeof(VRCPhysBone).GetProperty("exclusions", BindingFlags.Public | BindingFlags.Instance);
+                if (prop != null)
+                {
+                    return prop.GetValue(_physBone) as List<Transform>;
+                }
+                
+                var field = typeof(VRCPhysBone).GetField("exclusions", BindingFlags.Public | BindingFlags.Instance);
+                if (field != null)
+                {
+                    return field.GetValue(_physBone) as List<Transform>;
+                }
+            }
+            catch { }
+            
+            return null;
+        }
+        
+        private List<Transform> GetIgnoreTransforms()
+        {
+            try
+            {
+                var prop = typeof(VRCPhysBone).GetProperty("ignoreTransforms", BindingFlags.Public | BindingFlags.Instance);
+                if (prop != null)
+                {
+                    return prop.GetValue(_physBone) as List<Transform>;
+                }
+                
+                var field = typeof(VRCPhysBone).GetField("ignoreTransforms", BindingFlags.Public | BindingFlags.Instance);
+                if (field != null)
+                {
+                    return field.GetValue(_physBone) as List<Transform>;
+                }
+            }
+            catch { }
+            
+            return null;
+        }
+        
         private bool ShouldIncludeTransform(Transform transform)
         {
             // Skip if excluded
-            if (_physBone.exclusions != null && _physBone.exclusions.Contains(transform))
+            var exclusions = GetExclusions();
+            if (exclusions != null && exclusions.Contains(transform))
                 return false;
             
             // Skip if it has its own PhysBone
@@ -204,7 +300,8 @@ namespace EnhancedDynamics.Editor
                 return false;
             
             // Include if in ignore transforms list (they should still be simulated)
-            if (_physBone.ignoreTransforms != null && _physBone.ignoreTransforms.Contains(transform))
+            var ignoreTransforms = GetIgnoreTransforms();
+            if (ignoreTransforms != null && ignoreTransforms.Contains(transform))
                 return true;
             
             return true;
@@ -255,7 +352,7 @@ namespace EnhancedDynamics.Editor
                 bone.velocity *= 1f - (_physBone.stiffness * deltaTime);
                 
                 // Immobilize
-                bone.velocity *= 1f - _physBone.immobilize;
+                bone.velocity *= 1f - GetImmobilize();
                 
                 // Update position
                 bone.currentPosition += bone.velocity * deltaTime;
