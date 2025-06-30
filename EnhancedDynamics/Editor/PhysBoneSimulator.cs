@@ -16,6 +16,14 @@ namespace EnhancedDynamics.Editor
         private Transform _rootTransform;
         private bool _initialized = false;
         
+        // Integration type
+        private enum IntegrationType
+        {
+            Simplified,
+            Advanced
+        }
+        private IntegrationType _integrationType = IntegrationType.Simplified;
+        
         // Reflection cache
         private static bool _reflectionCached = false;
         private static FieldInfo _bonesField;
@@ -30,10 +38,20 @@ namespace EnhancedDynamics.Editor
             public Vector3 restPosition;
             public Quaternion restRotation;
             public Vector3 currentPosition;
+            public Quaternion currentRotation;
             public Vector3 velocity;
             public float length;
+            public float boneRadius; // For collision
             public BoneState parent;
             public List<BoneState> children = new List<BoneState>();
+            
+            // Gravity-modified rest position
+            public Vector3 gravityRestPosition;
+            public Quaternion gravityRestRotation;
+            
+            // Previous frame data for momentum
+            public Vector3 previousPosition;
+            public Quaternion previousRotation;
         }
         
         public PhysBoneSimulator(VRCPhysBone physBone)
@@ -150,7 +168,10 @@ namespace EnhancedDynamics.Editor
                         restPosition = transform.localPosition,
                         restRotation = transform.localRotation,
                         currentPosition = transform.position,
-                        velocity = Vector3.zero
+                        currentRotation = transform.rotation,
+                        velocity = Vector3.zero,
+                        previousPosition = transform.position,
+                        previousRotation = transform.rotation
                     };
                     
                     _bones.Add(bone);
@@ -168,6 +189,9 @@ namespace EnhancedDynamics.Editor
                     }
                 }
             }
+            
+            // Calculate gravity rest positions
+            CalculateGravityRestPositions();
         }
         
         private void BuildBoneChainRecursive(Transform current, BoneState parent)
@@ -178,8 +202,11 @@ namespace EnhancedDynamics.Editor
                 restPosition = current.localPosition,
                 restRotation = current.localRotation,
                 currentPosition = current.position,
+                currentRotation = current.rotation,
                 velocity = Vector3.zero,
-                parent = parent
+                parent = parent,
+                previousPosition = current.position,
+                previousRotation = current.rotation
             };
             
             if (parent != null)
@@ -202,6 +229,55 @@ namespace EnhancedDynamics.Editor
                     }
                 }
             }
+        }
+        
+        private void CalculateGravityRestPositions()
+        {
+            // Calculate gravity-modified rest positions for each bone
+            foreach (var bone in _bones)
+            {
+                if (bone.parent == null)
+                {
+                    // Root bone doesn't move
+                    bone.gravityRestPosition = bone.transform.position;
+                    bone.gravityRestRotation = bone.transform.rotation;
+                }
+                else
+                {
+                    // Calculate how much this bone should move due to gravity
+                    float gravityRatio = _physBone.gravity;
+                    
+                    // Apply gravity falloff based on chain depth
+                    if (_physBone.gravityFalloff > 0)
+                    {
+                        int depth = GetBoneDepth(bone);
+                        gravityRatio *= Mathf.Pow(1f - _physBone.gravityFalloff, depth);
+                    }
+                    
+                    // Gravity modifies the rest position between current rest and straight down
+                    Vector3 restWorldPos = bone.parent.transform.TransformPoint(bone.restPosition);
+                    Vector3 downPos = bone.parent.transform.position + Vector3.down * bone.length;
+                    
+                    // Interpolate between rest position and down position based on gravity
+                    bone.gravityRestPosition = Vector3.Lerp(restWorldPos, downPos, gravityRatio);
+                    
+                    // Calculate rotation to point from parent to gravity rest position
+                    Vector3 gravityDir = (bone.gravityRestPosition - bone.parent.transform.position).normalized;
+                    bone.gravityRestRotation = Quaternion.LookRotation(gravityDir, bone.parent.transform.up);
+                }
+            }
+        }
+        
+        private int GetBoneDepth(BoneState bone)
+        {
+            int depth = 0;
+            BoneState current = bone;
+            while (current.parent != null)
+            {
+                depth++;
+                current = current.parent;
+            }
+            return depth;
         }
         
         private int GetMaxChainLength()
@@ -328,53 +404,124 @@ namespace EnhancedDynamics.Editor
         
         private void ManualSimulate(float deltaTime)
         {
-            // Apply forces to each bone
+            // First, update gravity rest positions (they can change if root moves)
+            UpdateGravityRestPositions();
+            
+            // Apply physics to each bone
             foreach (var bone in _bones)
             {
-                if (bone.parent == null) continue; // Skip root
-                
-                // Gravity
-                var gravity = Vector3.down * _physBone.gravity * deltaTime;
-                bone.velocity += gravity;
-                
-                // Pull (return to rest force)
-                var restWorldPos = bone.parent.transform.TransformPoint(bone.restPosition);
-                var pullForce = (restWorldPos - bone.currentPosition) * _physBone.pull * deltaTime;
-                bone.velocity += pullForce;
-                
-                // Spring (angular return force)
-                var currentDir = (bone.currentPosition - bone.parent.transform.position).normalized;
-                var restDir = bone.parent.transform.TransformDirection(bone.restRotation * Vector3.forward);
-                var springForce = Vector3.Cross(currentDir, restDir) * _physBone.spring * deltaTime;
-                bone.velocity += springForce;
-                
-                // Damping
-                bone.velocity *= 1f - (_physBone.stiffness * deltaTime);
-                
-                // Immobilize
-                bone.velocity *= 1f - GetImmobilize();
-                
-                // Update position
-                bone.currentPosition += bone.velocity * deltaTime;
-                
-                // Constraint to length
-                if (bone.parent != null && bone.length > 0)
+                if (bone.parent == null) 
                 {
-                    var dir = (bone.currentPosition - bone.parent.transform.position).normalized;
-                    bone.currentPosition = bone.parent.transform.position + dir * bone.length;
+                    // Root follows the transform
+                    bone.currentPosition = bone.transform.position;
+                    bone.currentRotation = bone.transform.rotation;
+                    continue;
                 }
                 
-                // Apply to transform
+                // Store previous state for momentum
+                bone.previousPosition = bone.currentPosition;
+                bone.previousRotation = bone.currentRotation;
+                
+                // Calculate target based on gravity-modified rest position
+                Vector3 targetPosition = bone.gravityRestPosition;
+                
+                // Pull is the ONLY force that moves bones toward their gravity-modified rest position
+                float pullStrength = _physBone.pull;
+                
+                // Calculate pull force
+                Vector3 pullDirection = targetPosition - bone.currentPosition;
+                Vector3 pullForce = pullDirection * pullStrength;
+                
+                // Apply pull to velocity
+                bone.velocity += pullForce * deltaTime;
+                
+                // Spring/Momentum affects oscillation
+                if (_integrationType == IntegrationType.Simplified)
+                {
+                    // Spring in simplified mode controls oscillation
+                    float springDamping = 1f - (_physBone.spring * 0.5f); // Spring reduces oscillation
+                    bone.velocity *= springDamping;
+                }
+                else
+                {
+                    // Advanced mode would use momentum instead
+                    // TODO: Implement advanced mode with momentum
+                }
+                
+                // Stiffness competes with pull to keep bones in previous orientation
+                float stiffnessStrength = _physBone.stiffness;
+                if (stiffnessStrength > 0)
+                {
+                    // Stiffness tries to maintain the previous frame's position
+                    Vector3 stiffnessForce = (bone.previousPosition - bone.currentPosition) * stiffnessStrength;
+                    bone.velocity += stiffnessForce * deltaTime;
+                }
+                
+                // Immobilize reduces all motion
+                float immobilize = GetImmobilize();
+                if (immobilize > 0)
+                {
+                    bone.velocity *= 1f - immobilize;
+                }
+                
+                // Apply velocity
+                bone.currentPosition += bone.velocity * deltaTime;
+                
+                // Constrain to parent distance (maintain bone length)
+                if (bone.parent != null && bone.length > 0)
+                {
+                    Vector3 toParent = bone.currentPosition - bone.parent.currentPosition;
+                    if (toParent.magnitude > 0.001f)
+                    {
+                        toParent = toParent.normalized * bone.length;
+                        bone.currentPosition = bone.parent.currentPosition + toParent;
+                    }
+                }
+                
+                // Apply damping to velocity
+                bone.velocity *= 0.95f; // General damping to prevent infinite motion
+                
+                // Update transform
                 bone.transform.position = bone.currentPosition;
                 
-                // Look at parent
+                // Calculate rotation to point away from parent
                 if (bone.parent != null)
                 {
-                    var lookDir = bone.parent.transform.position - bone.transform.position;
-                    if (lookDir != Vector3.zero)
+                    Vector3 boneDirection = (bone.currentPosition - bone.parent.currentPosition).normalized;
+                    if (boneDirection.magnitude > 0.001f)
                     {
-                        bone.transform.rotation = Quaternion.LookRotation(-lookDir, bone.transform.up);
+                        // Maintain up vector relative to parent
+                        Vector3 parentUp = bone.parent.currentRotation * Vector3.up;
+                        bone.currentRotation = Quaternion.LookRotation(boneDirection, parentUp);
+                        bone.transform.rotation = bone.currentRotation;
                     }
+                }
+            }
+        }
+        
+        private void UpdateGravityRestPositions()
+        {
+            // Update gravity rest positions based on current parent positions
+            foreach (var bone in _bones)
+            {
+                if (bone.parent != null)
+                {
+                    // Recalculate gravity position based on current parent
+                    float gravityRatio = _physBone.gravity;
+                    
+                    // Apply gravity falloff
+                    if (_physBone.gravityFalloff > 0)
+                    {
+                        int depth = GetBoneDepth(bone);
+                        gravityRatio *= Mathf.Pow(1f - _physBone.gravityFalloff, depth);
+                    }
+                    
+                    // Calculate positions
+                    Vector3 restWorldPos = bone.parent.currentPosition + (bone.parent.currentRotation * bone.restPosition);
+                    Vector3 downPos = bone.parent.currentPosition + Vector3.down * bone.length;
+                    
+                    // Interpolate based on gravity
+                    bone.gravityRestPosition = Vector3.Lerp(restWorldPos, downPos, gravityRatio);
                 }
             }
         }
@@ -386,8 +533,14 @@ namespace EnhancedDynamics.Editor
                 bone.transform.localPosition = bone.restPosition;
                 bone.transform.localRotation = bone.restRotation;
                 bone.currentPosition = bone.transform.position;
+                bone.currentRotation = bone.transform.rotation;
+                bone.previousPosition = bone.currentPosition;
+                bone.previousRotation = bone.currentRotation;
                 bone.velocity = Vector3.zero;
             }
+            
+            // Recalculate gravity rest positions
+            CalculateGravityRestPositions();
         }
     }
 }
