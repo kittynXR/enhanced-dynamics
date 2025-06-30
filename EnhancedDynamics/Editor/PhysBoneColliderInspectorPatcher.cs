@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Reflection.Emit;
 using UnityEngine;
 using UnityEditor;
 using HarmonyLib;
@@ -14,8 +13,6 @@ namespace EnhancedDynamics.Editor
     [InitializeOnLoad]
     public static class PhysBoneColliderInspectorPatcher
     {
-        // Force reinitialization on next compile
-        private const int INIT_VERSION = 2;
         private static Harmony _harmony;
         private const string HarmonyId = "com.enhanceddynamics.physbone.inspector";
         
@@ -23,15 +20,6 @@ namespace EnhancedDynamics.Editor
         private static Dictionary<int, GizmoState> _gizmoStates = new Dictionary<int, GizmoState>();
         private static VRCPhysBoneCollider _currentCollider;
         private static bool _isDrawingPhysBoneInspector = false;
-        private static string _lastPropertyName = "";
-        
-        // GUI content
-        private static GUIStyle _miniButtonStyle;
-        private static Rect _lastPropertyRect;
-        private static bool _shouldDrawButtonAfterProperty;
-        private static string _pendingButtonProperty;
-        private static Dictionary<string, Rect> _lastFieldRects = new Dictionary<string, Rect>();
-        private static int _lastControlID;
         
         
         private class GizmoState
@@ -40,17 +28,12 @@ namespace EnhancedDynamics.Editor
             public bool heightGizmo;
             public bool positionGizmo;
             public bool rotationGizmo;
-            
-            // Cached world positions when gizmo was enabled
-            public Vector3? cachedWorldPosition;
-            public Quaternion? cachedWorldRotation;
         }
         
         static PhysBoneColliderInspectorPatcher()
         {
             try
             {
-                Debug.Log("[EnhancedDynamics] Static constructor called - Initializing PhysBoneColliderInspectorPatcher...");
                 
                 // Clean up any existing harmony instance
                 if (_harmony != null)
@@ -149,17 +132,6 @@ namespace EnhancedDynamics.Editor
                 
                 Debug.Log("[EnhancedDynamics] Initialization complete!");
                 
-                // Log all patched methods
-                Debug.Log("[EnhancedDynamics] Successfully patched methods:");
-                var patchedMethods = Harmony.GetAllPatchedMethods();
-                foreach (var method in patchedMethods)
-                {
-                    var patchInfo = Harmony.GetPatchInfo(method);
-                    if (patchInfo != null && patchInfo.Owners.Contains(HarmonyId))
-                    {
-                        Debug.Log($"[EnhancedDynamics]   - {method.DeclaringType?.FullName}.{method.Name}");
-                    }
-                }
             }
             catch (Exception e)
             {
@@ -230,7 +202,6 @@ namespace EnhancedDynamics.Editor
         {
             try
             {
-                Debug.Log("[EnhancedDynamics] Searching for VRC custom field methods...");
                 
                 // Search for VRC-specific field drawing methods similar to QuaternionAsEulerField
                 Type vrcEditorType = null;
@@ -246,13 +217,11 @@ namespace EnhancedDynamics.Editor
                                  type.GetCustomAttribute<CustomEditor>()?.GetType().GetField("m_InspectedType", BindingFlags.NonPublic | BindingFlags.Instance)?.GetValue(type.GetCustomAttribute<CustomEditor>()) as Type == typeof(VRCPhysBoneCollider)))
                             {
                                 vrcEditorType = type;
-                                Debug.Log($"[EnhancedDynamics] Found VRC editor type: {type.FullName}");
                                 
                                 // Look for all methods in this type
                                 var methods = type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
                                 foreach (var method in methods)
                                 {
-                                    Debug.Log($"[EnhancedDynamics] VRC Editor method: {method.Name} (Parameters: {method.GetParameters().Length})");
                                     
                                     // Try to patch any method that might be drawing our fields
                                     if (method.Name.Contains("Field") || method.Name.Contains("Draw") || 
@@ -264,11 +233,9 @@ namespace EnhancedDynamics.Editor
                                             var postfix = typeof(PhysBoneColliderInspectorPatcher).GetMethod(nameof(GenericField_Postfix),
                                                 BindingFlags.Static | BindingFlags.NonPublic);
                                             _harmony.Patch(method, postfix: new HarmonyMethod(postfix));
-                                            Debug.Log($"[EnhancedDynamics] Patched method: {method.Name}");
                                         }
                                         catch (Exception ex)
                                         {
-                                            Debug.Log($"[EnhancedDynamics] Could not patch {method.Name}: {ex.Message}");
                                         }
                                     }
                                 }
@@ -291,15 +258,6 @@ namespace EnhancedDynamics.Editor
                             {
                                 if (method.Name.Contains("Field") && !method.Name.Contains("QuaternionAsEuler"))
                                 {
-                                    Debug.Log($"[EnhancedDynamics] Found InspectorUtil method: {method.Name}");
-                                    try
-                                    {
-                                        var postfix = typeof(PhysBoneColliderInspectorPatcher).GetMethod(nameof(InspectorUtil_Field_Postfix),
-                                            BindingFlags.Static | BindingFlags.NonPublic);
-                                        _harmony.Patch(method, postfix: new HarmonyMethod(postfix));
-                                        Debug.Log($"[EnhancedDynamics] Patched InspectorUtil.{method.Name}");
-                                    }
-                                    catch { }
                                 }
                             }
                         }
@@ -316,7 +274,6 @@ namespace EnhancedDynamics.Editor
         {
             try
             {
-                Debug.Log("[EnhancedDynamics] Searching for InspectorUtil.QuaternionAsEulerField...");
                 
                 // Find InspectorUtil type in VRC assemblies
                 Type inspectorUtilType = null;
@@ -651,45 +608,7 @@ namespace EnhancedDynamics.Editor
             }
         }
         
-        private static SerializedProperty _lastFoundProperty;
-        private static SerializedProperty _currentProperty;
-        private static string _currentPropertyLabel;
-        private static string _lastLabel;
         
-        private static void FindProperty_Postfix(SerializedProperty __result, string propertyPath)
-        {
-            if (_isDrawingPhysBoneInspector && __result != null)
-            {
-                Debug.Log($"[EnhancedDynamics] FindProperty called for: {propertyPath}");
-                if (propertyPath == "radius" || propertyPath == "height" || propertyPath == "position" || propertyPath == "rotation")
-                {
-                    _lastFoundProperty = __result;
-                }
-            }
-        }
-        
-        private static void BeginProperty_Postfix(Rect position, GUIContent label, SerializedProperty property)
-        {
-            if (_isDrawingPhysBoneInspector && property != null)
-            {
-                _currentProperty = property;
-                _currentPropertyLabel = label?.text;
-                Debug.Log($"[EnhancedDynamics] BeginProperty: {property.name} (Label: {label?.text})");
-            }
-        }
-        
-        private static void EndProperty_Postfix()
-        {
-            // Disabled - we use the buttons at the bottom instead
-        }
-        
-        private static void EditorGUI_PropertyField_Postfix(Rect position, SerializedProperty property)
-        {
-            if (_isDrawingPhysBoneInspector && property != null)
-            {
-                Debug.Log($"[EnhancedDynamics] EditorGUI.PropertyField called for: {property.name}");
-            }
-        }
         
         private static void OnInspectorGUI_Prefix(UnityEditor.Editor __instance)
         {
@@ -777,61 +696,6 @@ namespace EnhancedDynamics.Editor
             _currentCollider = null;
         }
         
-        private static void PropertyField_Prefix(SerializedProperty property, GUILayoutOption[] options)
-        {
-            if (_isDrawingPhysBoneInspector && property != null)
-            {
-                Debug.Log($"[EnhancedDynamics] PropertyField_Prefix - Property: {property.name}, Options: {options?.Length ?? 0}");
-            }
-        }
-        
-        private static void PropertyField_Postfix(bool __result, object[] __args)
-        {
-            // Extract SerializedProperty from first argument
-            if (!_isDrawingPhysBoneInspector || !__result || _currentCollider == null || 
-                __args == null || __args.Length == 0 || !(__args[0] is SerializedProperty property))
-                return;
-            
-            var propertyName = property.name;
-            Debug.Log($"[EnhancedDynamics] PropertyField_Postfix called for: {propertyName} (args: {__args.Length})");
-            
-            // Disabled - we use the buttons at the bottom instead
-        }
-        
-        private static void QuaternionAsEulerField_Postfix(SerializedProperty property)
-        {
-            // Disabled - we use the buttons at the bottom instead
-        }
-        
-        private static void GenericField_Postfix(object __instance, MethodBase __originalMethod, object[] __args)
-        {
-            // Disabled - we use the buttons at the bottom instead
-        }
-        
-        private static void InspectorUtil_Field_Postfix(object[] __args, MethodBase __originalMethod)
-        {
-            // Disabled - we use the buttons at the bottom instead
-        }
-        
-        private static void FloatField_Postfix(float __result, object[] __args)
-        {
-            // Disabled - we use the buttons at the bottom instead
-        }
-        
-        private static void Vector3Field_Postfix(Vector3 __result, object[] __args)
-        {
-            // Disabled - we use the buttons at the bottom instead
-        }
-        
-        private static void EditorGUI_FloatField_Postfix(float __result, object[] __args)
-        {
-            // Disabled - we use the buttons at the bottom instead
-        }
-        
-        private static void EditorGUI_Vector3Field_Postfix(Vector3 __result, object[] __args)
-        {
-            // Disabled - we use the buttons at the bottom instead
-        }
         
         private static void PrefixLabel_Postfix(object[] __args)
         {
@@ -850,56 +714,6 @@ namespace EnhancedDynamics.Editor
             
             if (!string.IsNullOrEmpty(label))
             {
-                _lastLabel = label;
-                Debug.Log($"[EnhancedDynamics] PrefixLabel: {label}");
-            }
-        }
-        
-        private static void LabelField_Postfix(object[] __args)
-        {
-            if (!_isDrawingPhysBoneInspector || _currentCollider == null)
-                return;
-            
-            // Extract label from args
-            string label = null;
-            if (__args.Length > 0)
-            {
-                if (__args[0] is string str)
-                    label = str;
-                else if (__args[0] is GUIContent content)
-                    label = content.text;
-            }
-            
-            if (!string.IsNullOrEmpty(label))
-            {
-                Debug.Log($"[EnhancedDynamics] LabelField: {label}");
-                
-                // Check if this is one of our target labels
-                if (label == "Radius" || label == "Height" || label == "Position" || label == "Rotation")
-                {
-                    _pendingButtonProperty = label.ToLower();
-                    _shouldDrawButtonAfterProperty = true;
-                }
-            }
-        }
-        
-        private static void GetRect_Postfix(Rect __result, float width, float height)
-        {
-            if (!_isDrawingPhysBoneInspector || _currentCollider == null)
-                return;
-            
-            // Track the last rect created
-            _lastPropertyRect = __result;
-            
-            // If we have a pending property, check if this rect might be for it
-            if (!string.IsNullOrEmpty(_lastLabel))
-            {
-                Debug.Log($"[EnhancedDynamics] GetRect called after label: {_lastLabel}, rect: {__result}");
-                
-                if (_lastLabel == "Radius" || _lastLabel == "Height" || _lastLabel == "Position" || _lastLabel == "Rotation")
-                {
-                    _lastFieldRects[_lastLabel.ToLower()] = __result;
-                }
             }
         }
         

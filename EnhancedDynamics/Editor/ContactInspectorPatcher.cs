@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using UnityEngine;
 using UnityEditor;
@@ -20,11 +19,6 @@ namespace EnhancedDynamics.Editor
         private static Dictionary<int, ContactGizmoState> _gizmoStates = new Dictionary<int, ContactGizmoState>();
         private static ContactBase _currentContact;
         private static bool _isDrawingContactInspector = false;
-        private static string _currentPropertyPath = "";
-        
-        // Button rendering state
-        private static Dictionary<string, Rect> _pendingButtonRects = new Dictionary<string, Rect>();
-        private static string _clickedButton = null;
         
         private class ContactGizmoState
         {
@@ -38,7 +32,6 @@ namespace EnhancedDynamics.Editor
         {
             try
             {
-                Debug.Log("[EnhancedDynamics] Initializing ContactInspectorPatcher...");
                 
                 // Clean up any existing harmony instance
                 if (_harmony != null)
@@ -61,7 +54,6 @@ namespace EnhancedDynamics.Editor
         
         private static void DelayedInitialize()
         {
-            Debug.Log("[EnhancedDynamics] ContactInspectorPatcher delayed initialization...");
             Initialize();
         }
         
@@ -108,7 +100,6 @@ namespace EnhancedDynamics.Editor
                     var onInspectorGUIPrefix = typeof(ContactInspectorPatcher).GetMethod(nameof(OnInspectorGUI_Prefix), BindingFlags.Static | BindingFlags.NonPublic);
                     var onInspectorGUIPostfix = typeof(ContactInspectorPatcher).GetMethod(nameof(OnInspectorGUI_Postfix), BindingFlags.Static | BindingFlags.NonPublic);
                     _harmony.Patch(onInspectorGUIMethod, new HarmonyMethod(onInspectorGUIPrefix), new HarmonyMethod(onInspectorGUIPostfix));
-                    Debug.Log("[EnhancedDynamics] Patched VRCContactBaseEditor.OnInspectorGUI");
                 }
                 
                 // Patch DrawInspector_Shape
@@ -117,45 +108,9 @@ namespace EnhancedDynamics.Editor
                 {
                     var drawShapePostfix = typeof(ContactInspectorPatcher).GetMethod(nameof(DrawInspector_Shape_Postfix), BindingFlags.Static | BindingFlags.NonPublic);
                     _harmony.Patch(drawShapeMethod, null, new HarmonyMethod(drawShapePostfix));
-                    Debug.Log("[EnhancedDynamics] Patched VRCContactBaseEditor.DrawInspector_Shape");
                 }
                 
-                // Patch PropertyField to intercept property rendering
-                var propertyFieldMethods = typeof(EditorGUILayout).GetMethods(BindingFlags.Static | BindingFlags.Public)
-                    .Where(m => m.Name == "PropertyField");
                 
-                foreach (var method in propertyFieldMethods)
-                {
-                    var parameters = method.GetParameters();
-                    if (parameters.Length >= 1 && parameters[0].ParameterType == typeof(SerializedProperty))
-                    {
-                        try
-                        {
-                            var prefix = typeof(ContactInspectorPatcher).GetMethod(nameof(PropertyField_Prefix), BindingFlags.Static | BindingFlags.NonPublic);
-                            var postfix = typeof(ContactInspectorPatcher).GetMethod(nameof(PropertyField_Postfix), BindingFlags.Static | BindingFlags.NonPublic);
-                            _harmony.Patch(method, new HarmonyMethod(prefix), new HarmonyMethod(postfix));
-                            Debug.Log($"[EnhancedDynamics] Patched PropertyField method with {parameters.Length} parameters");
-                        }
-                        catch (Exception e)
-                        {
-                            Debug.LogWarning($"[EnhancedDynamics] Failed to patch PropertyField variant: {e.Message}");
-                        }
-                    }
-                }
-                Debug.Log("[EnhancedDynamics] Patched EditorGUILayout.PropertyField methods");
-                
-                // Patch QuaternionAsEulerField for rotation
-                var inspectorUtilType = contactEditorAssembly.GetType("VRC.Dynamics.InspectorUtil");
-                if (inspectorUtilType != null)
-                {
-                    var quaternionMethod = inspectorUtilType.GetMethod("QuaternionAsEulerField", BindingFlags.Static | BindingFlags.Public);
-                    if (quaternionMethod != null)
-                    {
-                        var quaternionPostfix = typeof(ContactInspectorPatcher).GetMethod(nameof(QuaternionAsEulerField_Postfix), BindingFlags.Static | BindingFlags.NonPublic);
-                        _harmony.Patch(quaternionMethod, null, new HarmonyMethod(quaternionPostfix));
-                        Debug.Log("[EnhancedDynamics] Patched InspectorUtil.QuaternionAsEulerField");
-                    }
-                }
                 
                 // Hook into scene view
                 SceneView.duringSceneGui -= OnSceneGUI;
@@ -175,7 +130,6 @@ namespace EnhancedDynamics.Editor
             {
                 _currentContact = contact;
                 _isDrawingContactInspector = true;
-                _pendingButtonRects.Clear(); // Clear button rects from previous frame
             }
         }
         
@@ -185,109 +139,7 @@ namespace EnhancedDynamics.Editor
             _currentContact = null;
         }
         
-        private static bool PropertyField_Prefix(object[] __args, ref bool __result)
-        {
-            if (!_isDrawingContactInspector || _currentContact == null || __args.Length == 0)
-                return true; // Run original method
-            
-            // Get the SerializedProperty from the first argument
-            var property = __args[0] as SerializedProperty;
-            if (property == null)
-                return true;
-            
-            // Check if this is one of our target properties
-            if (property.propertyPath == "radius" || property.propertyPath == "height" || 
-                property.propertyPath == "position" || property.propertyPath == "rotation")
-            {
-                var instanceId = _currentContact.GetInstanceID();
-                if (!_gizmoStates.ContainsKey(instanceId))
-                    _gizmoStates[instanceId] = new ContactGizmoState();
-                
-                var state = _gizmoStates[instanceId];
-                
-                // Draw our custom property field with inline button
-                DrawPropertyFieldWithButton(property, state);
-                
-                __result = true; // Tell Unity the property was drawn
-                return false; // Skip the original method
-            }
-            
-            return true; // Run original method for other properties
-        }
         
-        private static void PropertyField_Postfix(SerializedProperty property)
-        {
-            // No longer needed - everything is handled in the prefix
-        }
-        
-        private static void DrawPropertyFieldWithButton(SerializedProperty property, ContactGizmoState state)
-        {
-            EditorGUILayout.BeginHorizontal();
-            
-            // Draw the property field in a controlled width
-            var fieldRect = EditorGUILayout.GetControlRect(true, EditorGUIUtility.singleLineHeight);
-            var buttonWidth = 25f;
-            var spacing = 2f;
-            
-            // Adjust field rect to make room for button
-            fieldRect.width -= (buttonWidth + spacing);
-            
-            // Draw the property field
-            EditorGUI.PropertyField(fieldRect, property, new GUIContent(property.displayName));
-            
-            // Draw the button
-            var buttonRect = new Rect(fieldRect.x + fieldRect.width + spacing, fieldRect.y, buttonWidth, fieldRect.height);
-            
-            string buttonLabel = "";
-            bool currentState = false;
-            
-            switch (property.propertyPath)
-            {
-                case "radius":
-                    buttonLabel = state.radiusGizmo ? "●" : "○";
-                    currentState = state.radiusGizmo;
-                    break;
-                case "height":
-                    buttonLabel = state.heightGizmo ? "↕" : "│";
-                    currentState = state.heightGizmo;
-                    break;
-                case "position":
-                    buttonLabel = state.positionGizmo ? "⊕" : "⊙";
-                    currentState = state.positionGizmo;
-                    break;
-                case "rotation":
-                    buttonLabel = state.rotationGizmo ? "↻" : "○";
-                    currentState = state.rotationGizmo;
-                    break;
-            }
-            
-            if (GUI.Button(buttonRect, buttonLabel, EditorStyles.miniButton))
-            {
-                switch (property.propertyPath)
-                {
-                    case "radius":
-                        state.radiusGizmo = !state.radiusGizmo;
-                        break;
-                    case "height":
-                        state.heightGizmo = !state.heightGizmo;
-                        break;
-                    case "position":
-                        state.positionGizmo = !state.positionGizmo;
-                        break;
-                    case "rotation":
-                        state.rotationGizmo = !state.rotationGizmo;
-                        break;
-                }
-                SceneView.RepaintAll();
-            }
-            
-            EditorGUILayout.EndHorizontal();
-        }
-        
-        private static void QuaternionAsEulerField_Postfix(SerializedProperty quaternionProperty)
-        {
-            // No longer needed - rotation is handled in PropertyField
-        }
         
         private static void DrawInspector_Shape_Postfix()
         {
