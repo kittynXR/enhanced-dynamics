@@ -143,9 +143,10 @@ namespace EnhancedDynamics.Editor
         {
             try
             {
-                Debug.Log("[EnhancedDynamics] Searching for VRCPhysBoneCollider inspector...");
+                Debug.Log("[EnhancedDynamics] Searching for VRC PhysBone inspectors...");
                 
-                Type inspectorType = null;
+                Type colliderInspectorType = null;
+                Type physBoneInspectorType = null;
                 foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
                 {
                     try
@@ -163,8 +164,12 @@ namespace EnhancedDynamics.Editor
                                         if (inspectedType == typeof(VRCPhysBoneCollider))
                                         {
                                             Debug.Log($"[EnhancedDynamics] Found VRCPhysBoneCollider editor: {type.FullName}");
-                                            inspectorType = type;
-                                            break;
+                                            colliderInspectorType = type;
+                                        }
+                                        else if (inspectedType == typeof(VRCPhysBone))
+                                        {
+                                            Debug.Log($"[EnhancedDynamics] Found VRCPhysBone editor: {type.FullName}");
+                                            physBoneInspectorType = type;
                                         }
                                     }
                                 }
@@ -174,9 +179,10 @@ namespace EnhancedDynamics.Editor
                     catch { }
                 }
                 
-                if (inspectorType != null)
+                // Patch collider inspector
+                if (colliderInspectorType != null)
                 {
-                    var onInspectorGUI = inspectorType.GetMethod("OnInspectorGUI", BindingFlags.Public | BindingFlags.Instance);
+                    var onInspectorGUI = colliderInspectorType.GetMethod("OnInspectorGUI", BindingFlags.Public | BindingFlags.Instance);
                     if (onInspectorGUI != null)
                     {
                         var prefix = typeof(PhysBoneColliderInspectorPatcher).GetMethod(nameof(OnInspectorGUI_Prefix),
@@ -189,6 +195,25 @@ namespace EnhancedDynamics.Editor
                             postfix: new HarmonyMethod(postfix));
                         
                         Debug.Log("[EnhancedDynamics] Successfully patched VRCPhysBoneCollider inspector!");
+                    }
+                }
+                
+                // Patch PhysBone inspector
+                if (physBoneInspectorType != null)
+                {
+                    var onInspectorGUI = physBoneInspectorType.GetMethod("OnInspectorGUI", BindingFlags.Public | BindingFlags.Instance);
+                    if (onInspectorGUI != null)
+                    {
+                        var prefix = typeof(PhysBoneColliderInspectorPatcher).GetMethod(nameof(PhysBone_OnInspectorGUI_Prefix),
+                            BindingFlags.Static | BindingFlags.NonPublic);
+                        var postfix = typeof(PhysBoneColliderInspectorPatcher).GetMethod(nameof(PhysBone_OnInspectorGUI_Postfix),
+                            BindingFlags.Static | BindingFlags.NonPublic);
+                        
+                        _harmony.Patch(onInspectorGUI, 
+                            prefix: new HarmonyMethod(prefix),
+                            postfix: new HarmonyMethod(postfix));
+                        
+                        Debug.Log("[EnhancedDynamics] Successfully patched VRCPhysBone inspector!");
                     }
                 }
             }
@@ -614,6 +639,68 @@ namespace EnhancedDynamics.Editor
         {
             _currentCollider = __instance.target as VRCPhysBoneCollider;
             _isDrawingPhysBoneInspector = _currentCollider != null;
+            
+            if (!_isDrawingPhysBoneInspector || _currentCollider == null) return;
+            
+            // Add Preview Physics button at the top
+            EditorGUILayout.Space(5);
+            
+            var originalColor = GUI.backgroundColor;
+            GUI.backgroundColor = PhysicsPreviewManager.IsPreviewActive ? new Color(0.5f, 1f, 0.5f) : Color.green;
+            
+            if (GUILayout.Button(PhysicsPreviewManager.IsPreviewActive ? "Preview Physics (Active)" : "Preview Physics", 
+                GUILayout.Height(30)))
+            {
+                if (PhysicsPreviewManager.IsPreviewActive)
+                {
+                    PhysicsPreviewManager.StopPreview(false);
+                }
+                else
+                {
+                    PhysicsPreviewManager.StartPreview();
+                }
+            }
+            
+            GUI.backgroundColor = originalColor;
+            
+            EditorGUILayout.Space(5);
+        }
+        
+        private static VRCPhysBone _currentPhysBone;
+        
+        private static void PhysBone_OnInspectorGUI_Prefix(UnityEditor.Editor __instance)
+        {
+            _currentPhysBone = __instance.target as VRCPhysBone;
+            
+            if (_currentPhysBone == null) return;
+            
+            // Add Preview Physics button at the top
+            EditorGUILayout.Space(5);
+            
+            var originalColor = GUI.backgroundColor;
+            GUI.backgroundColor = PhysicsPreviewManager.IsPreviewActive ? new Color(0.5f, 1f, 0.5f) : Color.green;
+            
+            if (GUILayout.Button(PhysicsPreviewManager.IsPreviewActive ? "Preview Physics (Active)" : "Preview Physics", 
+                GUILayout.Height(30)))
+            {
+                if (PhysicsPreviewManager.IsPreviewActive)
+                {
+                    PhysicsPreviewManager.StopPreview(false);
+                }
+                else
+                {
+                    PhysicsPreviewManager.StartPreview();
+                }
+            }
+            
+            GUI.backgroundColor = originalColor;
+            
+            EditorGUILayout.Space(5);
+        }
+        
+        private static void PhysBone_OnInspectorGUI_Postfix(UnityEditor.Editor __instance)
+        {
+            _currentPhysBone = null;
         }
         
         private static void OnInspectorGUI_Postfix(UnityEditor.Editor __instance)
