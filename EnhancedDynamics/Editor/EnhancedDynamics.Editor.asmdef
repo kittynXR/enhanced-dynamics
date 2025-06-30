@@ -2,7 +2,9 @@
     "name": "EnhancedDynamics.Editor",
     "rootNamespace": "EnhancedDynamics.Editor",
     "references": [
-        "VRC.SDKBase"
+        "VRC.SDKBase",
+        "EnhancedDynamics.Runtime",
+        "VRC.SDK3A"
     ],
     "includePlatforms": [
         "Editor"

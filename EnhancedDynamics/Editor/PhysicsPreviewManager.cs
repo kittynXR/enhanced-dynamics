@@ -5,6 +5,7 @@ using System.Reflection;
 using UnityEngine;
 using UnityEditor;
 using VRC.SDK3.Dynamics.PhysBone.Components;
+using EnhancedDynamics.Runtime.Physics;
 
 namespace EnhancedDynamics.Editor
 {
@@ -19,7 +20,9 @@ namespace EnhancedDynamics.Editor
         private static List<VRCPhysBone> _activePhysBones = new List<VRCPhysBone>();
         private static Dictionary<VRCPhysBone, PhysBoneState> _originalStates = new Dictionary<VRCPhysBone, PhysBoneState>();
         private static Dictionary<VRCPhysBone, PhysBoneState> _modifiedStates = new Dictionary<VRCPhysBone, PhysBoneState>();
-        private static Dictionary<VRCPhysBone, PhysBoneSimulator> _simulators = new Dictionary<VRCPhysBone, PhysBoneSimulator>();
+        
+        // Preview components
+        private static List<PhysBonePreviewComponent> _previewComponents = new List<PhysBonePreviewComponent>();
         
         // Transform tracking for movement
         private static Transform _selectedTransform;
@@ -64,9 +67,6 @@ namespace EnhancedDynamics.Editor
             
             Debug.Log("[EnhancedDynamics] Starting Physics Preview Mode");
             
-            // Initialize reflection if needed
-            InitializeReflection();
-            
             // Find all PhysBones in the scene
             _activePhysBones = GameObject.FindObjectsOfType<VRCPhysBone>()
                 .Where(pb => pb.enabled && pb.gameObject.activeInHierarchy)
@@ -81,10 +81,19 @@ namespace EnhancedDynamics.Editor
             // Store original states
             StoreOriginalStates();
             
-            // Create simulators for each PhysBone
+            // Add preview components to each PhysBone
+            _previewComponents.Clear();
             foreach (var physBone in _activePhysBones)
             {
-                _simulators[physBone] = new PhysBoneSimulator(physBone);
+                try
+                {
+                    var previewComp = physBone.gameObject.AddComponent<PhysBonePreviewComponent>();
+                    _previewComponents.Add(previewComp);
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError($"[EnhancedDynamics] Failed to add preview component to {physBone.name}: {e}");
+                }
             }
             
             // Set up selected transform for movement
@@ -99,9 +108,9 @@ namespace EnhancedDynamics.Editor
             _isPreviewActive = true;
             _lastUpdateTime = EditorApplication.timeSinceStartup;
             
-            // Subscribe to update loop
-            EditorApplication.update += UpdatePhysicsSimulation;
+            // Subscribe to scene GUI only (components handle their own updates)
             SceneView.duringSceneGui += DrawSceneGUI;
+            EditorApplication.update += ForceSceneRepaint;
             
             // Force scene view to repaint continuously
             SceneView.RepaintAll();
@@ -115,9 +124,19 @@ namespace EnhancedDynamics.Editor
             
             Debug.Log($"[EnhancedDynamics] Stopping Physics Preview (Apply Changes: {applyChanges})");
             
+            // Remove preview components
+            foreach (var component in _previewComponents)
+            {
+                if (component != null)
+                {
+                    UnityEngine.Object.DestroyImmediate(component);
+                }
+            }
+            _previewComponents.Clear();
+            
             // Unsubscribe from events
-            EditorApplication.update -= UpdatePhysicsSimulation;
             SceneView.duringSceneGui -= DrawSceneGUI;
+            EditorApplication.update -= ForceSceneRepaint;
             
             if (applyChanges)
             {
@@ -134,7 +153,6 @@ namespace EnhancedDynamics.Editor
             _activePhysBones.Clear();
             _originalStates.Clear();
             _modifiedStates.Clear();
-            _simulators.Clear();
             _selectedTransform = null;
             _isPreviewActive = false;
             
@@ -325,12 +343,6 @@ namespace EnhancedDynamics.Editor
                     SetImmobilize(physBone, state.immobilize);
                 }
                 
-                // Reset simulator if exists
-                if (_simulators.ContainsKey(physBone))
-                {
-                    _simulators[physBone].Reset();
-                }
-                
                 // Restore transforms
                 foreach (var transformKvp in state.boneTransforms)
                 {
@@ -370,50 +382,6 @@ namespace EnhancedDynamics.Editor
             }
         }
         
-        private static void UpdatePhysicsSimulation()
-        {
-            if (!_isPreviewActive) return;
-            
-            double currentTime = EditorApplication.timeSinceStartup;
-            float deltaTime = (float)(currentTime - _lastUpdateTime);
-            
-            // Limit delta time to prevent instability
-            deltaTime = Mathf.Min(deltaTime, PHYSICS_UPDATE_RATE * 2f);
-            
-            if (deltaTime >= PHYSICS_UPDATE_RATE)
-            {
-                // Update physics
-                SimulatePhysBones(deltaTime);
-                
-                _lastUpdateTime = currentTime;
-                SceneView.RepaintAll();
-            }
-        }
-        
-        private static void SimulatePhysBones(float deltaTime)
-        {
-            foreach (var physBone in _activePhysBones)
-            {
-                if (physBone == null || !physBone.enabled) continue;
-                
-                try
-                {
-                    // Use our simulator
-                    if (_simulators.ContainsKey(physBone))
-                    {
-                        _simulators[physBone].Simulate(deltaTime);
-                    }
-                    
-                    // Track parameter changes
-                    TrackParameterChanges(physBone);
-                }
-                catch (Exception e)
-                {
-                    Debug.LogError($"[EnhancedDynamics] Error simulating PhysBone: {e}");
-                }
-            }
-        }
-        
         
         private static void TrackParameterChanges(VRCPhysBone physBone)
         {
@@ -433,6 +401,14 @@ namespace EnhancedDynamics.Editor
             {
                 state.hasImmobilize = true;
                 state.immobilize = GetImmobilize(physBone);
+            }
+        }
+        
+        private static void ForceSceneRepaint()
+        {
+            if (_isPreviewActive && SceneView.lastActiveSceneView != null)
+            {
+                SceneView.lastActiveSceneView.Repaint();
             }
         }
         
@@ -461,11 +437,7 @@ namespace EnhancedDynamics.Editor
             if (GUILayout.Button("Reset", GUILayout.Height(25)))
             {
                 RestoreOriginalStates();
-                // Don't stop preview, just reset the simulation
-                foreach (var simulator in _simulators.Values)
-                {
-                    simulator.Reset();
-                }
+                // Components will reset themselves via OnDisable/OnEnable
             }
             
             GUI.backgroundColor = new Color(1f, 1f, 0.5f);
