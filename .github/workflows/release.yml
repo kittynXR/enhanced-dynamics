@@ -86,7 +86,6 @@ jobs:
     - name: Set Environment Variables
       run: |
         echo "zipFile=${{ env.packageName }}-${{ steps.version.outputs.prop }}.zip" >> $GITHUB_ENV
-        echo "zipFileNoVersion=${{ env.packageName }}.zip" >> $GITHUB_ENV
         echo "unityPackage=${{ env.packageName }}-${{ steps.version.outputs.prop }}.unitypackage" >> $GITHUB_ENV
     
     - name: Create directory structure
@@ -98,15 +97,12 @@ jobs:
       working-directory: output
       run: |
         zip -r "../${{ env.zipFile }}" *
-        cp "../${{ env.zipFile }}" "../${{ env.zipFileNoVersion }}"
     
     - name: Update Release
       uses: softprops/action-gh-release@v1
       with:
         files: |
           ${{ env.zipFile }}
-          ${{ env.zipFileNoVersion }}
-          kittyncat_tools/cat.kittyn.enhanced-dynamics/package.json
   
   update-main-vpm:
     needs: build-package
