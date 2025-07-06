@@ -332,7 +332,7 @@ RELEASE_NOTES="$RELEASE_NOTES
 Download \`$ZIP_FILE\` and extract to your Unity project's \`Packages\` folder."
 
 # Build file list for release
-RELEASE_FILES="$ZIP_FILE kittyncat_tools/$ROOT_DIR/package.json"
+RELEASE_FILES="$ZIP_FILE"
 if [ -n "$UNITY_PACKAGE" ] && [ -f "$UNITY_PACKAGE" ]; then
     RELEASE_FILES="$RELEASE_FILES $UNITY_PACKAGE"
 fi
