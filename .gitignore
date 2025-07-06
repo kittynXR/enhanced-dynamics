@@ -1,0 +1,36 @@
+# Unity
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+
+# Visual Studio
+.vs/
+*.csproj
+*.sln
+*.suo
+*.user
+*.userprefs
+
+# JetBrains Rider
+.idea/
+*.iml
+
+# Build outputs
+output/
+*.zip
+*.unitypackage
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node.js (for build scripts)
+node_modules/
+package-lock.json
+
+# Build configuration
+.unity-version

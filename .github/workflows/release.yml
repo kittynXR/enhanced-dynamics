@@ -1,0 +1,146 @@
+name: Build Release
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+    paths: [ "cat.kittyn.enhanced-dynamics/package.json" ]
+  release:
+    types: [ published, created, edited, unpublished, deleted, released ]
+
+env:
+  packageName: "cat.kittyn.enhanced-dynamics"
+
+permissions:
+  contents: write
+
+jobs:
+  build-listing:
+    name: Build Package Listing
+    runs-on: ubuntu-latest
+    steps:
+    
+    - name: Checkout Local Repository
+      uses: actions/checkout@v4
+    
+    - name: Checkout Remote Repository
+      uses: actions/checkout@v4
+      with:
+        repository: ${{ github.repository }}
+        ref: gh-pages
+        path: gh-pages
+    
+    - name: Move files to temporary directory
+      run: |
+        mkdir -p /tmp/repo-archive
+        if [ -f gh-pages/index.json ]; then
+          mv gh-pages/index.json /tmp/repo-archive/
+        fi
+        if [ -f gh-pages/CNAME ]; then
+          mv gh-pages/CNAME /tmp/repo-archive/
+        fi
+    
+    - name: Clear gh-pages
+      run: |
+        rm -rf gh-pages/*
+    
+    - name: Restore files
+      run: |
+        if [ -f /tmp/repo-archive/index.json ]; then
+          mv /tmp/repo-archive/index.json gh-pages/
+        fi
+        if [ -f /tmp/repo-archive/CNAME ]; then
+          mv /tmp/repo-archive/CNAME gh-pages/
+        fi
+    
+    - name: Build Package Listing
+      run: |
+        node scripts/build-index.js gh-pages/index.json source.json
+    
+    - name: Deploy to GitHub Pages
+      uses: crazy-max/ghaction-github-pages@v4
+      with:
+        target_branch: gh-pages
+        build_dir: gh-pages
+        commit_message: "Update package listing"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-package:
+    needs: build-listing
+    name: Build Package
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+    steps:
+    
+    - name: Checkout
+      uses: actions/checkout@v4
+    
+    - name: Get version
+      id: version
+      uses: notiz-dev/github-action-json-property@v0.2.0
+      with: 
+        path: "kittyncat_tools/cat.kittyn.enhanced-dynamics/package.json"
+        prop_path: "version"
+    
+    - name: Set Environment Variables
+      run: |
+        echo "zipFile=${{ env.packageName }}-${{ steps.version.outputs.prop }}.zip" >> $GITHUB_ENV
+        echo "zipFileNoVersion=${{ env.packageName }}.zip" >> $GITHUB_ENV
+        echo "unityPackage=${{ env.packageName }}-${{ steps.version.outputs.prop }}.unitypackage" >> $GITHUB_ENV
+    
+    - name: Create directory structure
+      run: |
+        mkdir -p output
+        cp -r kittyncat_tools/cat.kittyn.enhanced-dynamics/* output/
+    
+    - name: Create Zip
+      working-directory: output
+      run: |
+        zip -r "../${{ env.zipFile }}" *
+        cp "../${{ env.zipFile }}" "../${{ env.zipFileNoVersion }}"
+    
+    - name: Update Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          ${{ env.zipFile }}
+          ${{ env.zipFileNoVersion }}
+          kittyncat_tools/cat.kittyn.enhanced-dynamics/package.json
+  
+  update-main-vpm:
+    needs: build-package
+    name: Update Main VPM Repository
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' && (github.event.action == 'published' || github.event.action == 'created' || github.event.action == 'released')
+    steps:
+      - name: Debug event information
+        run: |
+          echo "Event name: ${{ github.event_name }}"
+          echo "Event action: ${{ github.event.action }}"
+          echo "Repository: ${{ github.repository }}"
+          echo "Tag: ${{ github.ref }}"
+      
+      - name: Get version from tag
+        id: get_version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          # Remove 'v' prefix if present
+          VERSION=${VERSION#v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+      
+      - name: Debug payload
+        run: |
+          echo "Package name: cat.kittyn.enhanced-dynamics"
+          echo "Release URL: https://github.com/${{ github.repository }}/releases/download/${{ steps.get_version.outputs.tag }}/cat.kittyn.enhanced-dynamics-${{ steps.get_version.outputs.version }}.zip"
+          echo "Version: ${{ steps.get_version.outputs.version }}"
+          echo "Tag: ${{ steps.get_version.outputs.tag }}"
+      
+      - name: Trigger VPM Update
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.KITTYN_VPM_TOKEN }}
+          repository: kittynXR/kittyn-vpm
+          event-type: update-package
+          client-payload: '{"package_name": "cat.kittyn.enhanced-dynamics", "release_url": "https://github.com/${{ github.repository }}/releases/download/${{ steps.get_version.outputs.tag }}/cat.kittyn.enhanced-dynamics-${{ steps.get_version.outputs.version }}.zip"}'
