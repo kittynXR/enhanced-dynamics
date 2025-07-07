@@ -54,7 +54,7 @@ namespace EnhancedDynamics.Editor
             }
         }
         
-        [MenuItem("Tools/Enhanced Dynamics/Reinitialize Patches")]
+        [MenuItem("Tools/⚙️🎨 kittyn.cat 🐟/Enhanced Dynamics/🐟 Reinitialize Patches", false, 1500)]
         private static void ReinitializePatches()
         {
             Debug.Log("[EnhancedDynamics] Manual reinitialization requested");

@@ -7,21 +7,21 @@ namespace EnhancedDynamics.Editor
     public static class PhysicsPreviewManager
     {
         // Menu items for testing
-        [MenuItem("Tools/Enhanced Dynamics/Enter Physics Preview")]
+        [MenuItem("Tools/⚙️🎨 kittyn.cat 🐟/Enhanced Dynamics/🐟 Enter Physics Preview", false, 1501)]
         public static void StartPhysicsPreview()
         {
             Debug.Log("[EnhancedDynamics] Menu: Enter Physics Preview clicked");
             StartPreview();
         }
         
-        [MenuItem("Tools/Enhanced Dynamics/Exit Physics Preview")]
+        [MenuItem("Tools/⚙️🎨 kittyn.cat 🐟/Enhanced Dynamics/🐟 Exit Physics Preview", false, 1502)]
         public static void StopPhysicsPreview()
         {
             Debug.Log("[EnhancedDynamics] Menu: Exit Physics Preview clicked");
             StopPreview();
         }
         
-        [MenuItem("Tools/Enhanced Dynamics/Test Debug Output")]
+        [MenuItem("Tools/⚙️🎨 kittyn.cat 🐟/Enhanced Dynamics/🐟 Test Debug Output", false, 1503)]
         public static void TestDebugOutput()
         {
             Debug.Log("[EnhancedDynamics] === TEST DEBUG OUTPUT ===");
