@@ -30,20 +30,17 @@ namespace EnhancedDynamics.Editor
         {
             if (!_gizmoEnabled || !PlayModeHook.IsInPhysicsPreview)
             {
-                Debug.Log($"[EnhancedDynamics] Gizmo not drawn - Enabled: {_gizmoEnabled}, Preview: {PlayModeHook.IsInPhysicsPreview}");
                 return;
             }
             
             var physicsClone = AvatarHiding.PhysicsClone;
             if (physicsClone == null)
             {
-                Debug.Log("[EnhancedDynamics] Gizmo not drawn - No physics clone");
                 return;
             }
             
             try
             {
-                Debug.Log("[EnhancedDynamics] Drawing avatar gizmo...");
                 
                 // Calculate avatar center if not cached
                 if (!_avatarCenterCached)
@@ -70,22 +67,18 @@ namespace EnhancedDynamics.Editor
                 
                 if (EditorGUI.EndChangeCheck())
                 {
-                    Debug.Log("[EnhancedDynamics] Avatar gizmo changed!");
-                    
                     // Apply translation if changed
                     if (newCenter != _avatarCenter)
                     {
                         var offset = newCenter - _avatarCenter;
                         ApplyAvatarTranslation(physicsClone, offset);
                         _avatarCenter = newCenter;
-                        Debug.Log($"[EnhancedDynamics] Avatar translated by: {offset}");
                     }
                     
                     // Apply rotation if changed
                     if (newRotation != avatarRotation)
                     {
                         ApplyAvatarRotation(physicsClone, newRotation);
-                        Debug.Log($"[EnhancedDynamics] Avatar rotated to: {newRotation.eulerAngles}");
                     }
                     
                     // Mark scene as dirty
@@ -228,8 +221,6 @@ namespace EnhancedDynamics.Editor
                 
                 // Apply translation to avatar root
                 avatar.transform.position += offset;
-                
-                Debug.Log($"[EnhancedDynamics] Avatar translated by {offset}");
             }
             catch (Exception e)
             {
@@ -246,8 +237,6 @@ namespace EnhancedDynamics.Editor
                 
                 // Apply rotation to avatar root
                 avatar.transform.rotation = newRotation;
-                
-                Debug.Log($"[EnhancedDynamics] Avatar rotated to {newRotation.eulerAngles}");
             }
             catch (Exception e)
             {

@@ -123,11 +123,11 @@ namespace EnhancedDynamics.Editor
                             {
                                 snapshot.propertyValues[prop.propertyPath] = serializedValue;
                                 
-                                // Log array properties specially
-                                if (prop.isArray || prop.propertyPath.Contains(".Array."))
-                                {
-                                    Debug.Log($"[EnhancedDynamics] Captured array property: {prop.propertyPath} = {serializedValue}");
-                                }
+                                // Log array properties specially (only for debugging)
+                                // if (prop.isArray || prop.propertyPath.Contains(".Array."))
+                                // {
+                                //     Debug.Log($"[EnhancedDynamics] Captured array property: {prop.propertyPath} = {serializedValue}");
+                                // }
                             }
                         }
                     }
@@ -140,18 +140,18 @@ namespace EnhancedDynamics.Editor
                 var key = $"{snapshot.componentPath}#{snapshot.componentTypeName}";
                 _originalComponentSnapshots[key] = snapshot;
                 
-                Debug.Log($"[EnhancedDynamics] Captured {snapshot.propertyValues.Count} properties for {typeof(T).Name} at {snapshot.componentPath}");
-                Debug.Log($"[EnhancedDynamics] Snapshot key: {key}");
+                // Debug.Log($"[EnhancedDynamics] Captured {snapshot.propertyValues.Count} properties for {typeof(T).Name} at {snapshot.componentPath}");
+                // Debug.Log($"[EnhancedDynamics] Snapshot key: {key}");
                 
-                // Log first few properties for debugging
-                int count = 0;
-                foreach (var kvp in snapshot.propertyValues)
-                {
-                    if (count++ < 5) // Only log first 5 properties
-                    {
-                        Debug.Log($"  Property: {kvp.Key} = {kvp.Value}");
-                    }
-                }
+                // Log first few properties for debugging (commented out to reduce spam)
+                // int count = 0;
+                // foreach (var kvp in snapshot.propertyValues)
+                // {
+                //     if (count++ < 5) // Only log first 5 properties
+                //     {
+                //         Debug.Log($"  Property: {kvp.Key} = {kvp.Value}");
+                //     }
+                // }
             }
         }
         
@@ -294,8 +294,8 @@ namespace EnhancedDynamics.Editor
             {
                 var cloneComponents = physicsClone.GetComponentsInChildren<T>(true);
                 
-                Debug.Log($"[EnhancedDynamics] Checking {cloneComponents.Length} {typeof(T).Name} clone components for changes");
-                Debug.Log($"[EnhancedDynamics] Available snapshot keys: {string.Join(", ", _originalComponentSnapshots.Keys)}");
+                // Debug.Log($"[EnhancedDynamics] Checking {cloneComponents.Length} {typeof(T).Name} clone components for changes");
+                // Debug.Log($"[EnhancedDynamics] Available snapshot keys: {string.Join(", ", _originalComponentSnapshots.Keys)}");
                 
                 foreach (var cloneComponent in cloneComponents)
                 {
@@ -372,13 +372,13 @@ namespace EnhancedDynamics.Editor
                                     float.TryParse(originalValue, out float original))
                                 {
                                     hasChanged = Mathf.Abs(current - original) > 0.0001f;
-                                    if (hasChanged)
-                                    {
-                                        Debug.Log($"[EnhancedDynamics] Float property changed: {cloneProp.propertyPath}");
-                                        Debug.Log($"  Original: {original:F6}");
-                                        Debug.Log($"  Current: {current:F6}");
-                                        Debug.Log($"  Difference: {Mathf.Abs(current - original):F6}");
-                                    }
+                                    // if (hasChanged)
+                                    // {
+                                    //     Debug.Log($"[EnhancedDynamics] Float property changed: {cloneProp.propertyPath}");
+                                    //     Debug.Log($"  Original: {original:F6}");
+                                    //     Debug.Log($"  Current: {current:F6}");
+                                    //     Debug.Log($"  Difference: {Mathf.Abs(current - original):F6}");
+                                    // }
                                 }
                                 else
                                 {
@@ -389,20 +389,20 @@ namespace EnhancedDynamics.Editor
                             else if (cloneProp.propertyPath.EndsWith(".Array.size"))
                             {
                                 hasChanged = currentValue != originalValue;
-                                if (hasChanged)
-                                {
-                                    Debug.Log($"[EnhancedDynamics] Array size changed: {cloneProp.propertyPath}");
-                                    Debug.Log($"  Original size: {originalValue}");
-                                    Debug.Log($"  Current size: {currentValue}");
-                                }
+                                // if (hasChanged)
+                                // {
+                                //     Debug.Log($"[EnhancedDynamics] Array size changed: {cloneProp.propertyPath}");
+                                //     Debug.Log($"  Original size: {originalValue}");
+                                //     Debug.Log($"  Current size: {currentValue}");
+                                // }
                             }
                             else
                             {
                                 hasChanged = currentValue != originalValue;
-                                if (hasChanged && cloneProp.propertyPath.Contains(".Array."))
-                                {
-                                    Debug.Log($"[EnhancedDynamics] Array element changed: {cloneProp.propertyPath}");
-                                }
+                                // if (hasChanged && cloneProp.propertyPath.Contains(".Array."))
+                                // {
+                                //     Debug.Log($"[EnhancedDynamics] Array element changed: {cloneProp.propertyPath}");
+                                // }
                             }
                             
                             if (hasChanged)
@@ -415,9 +415,9 @@ namespace EnhancedDynamics.Editor
                                 };
                                 
                                 componentChange.propertyChanges.Add(propertyChange);
-                                Debug.Log($"[EnhancedDynamics] Property changed: {cloneProp.propertyPath} (Type: {cloneProp.propertyType})");
-                                Debug.Log($"  Original: {originalValue}");
-                                Debug.Log($"  Current: {currentValue}");
+                                // Debug.Log($"[EnhancedDynamics] Property changed: {cloneProp.propertyPath} (Type: {cloneProp.propertyType})");
+                                // Debug.Log($"  Original: {originalValue}");
+                                // Debug.Log($"  Current: {currentValue}");
                             }
                         }
                         else if (!string.IsNullOrEmpty(currentValue))

@@ -243,17 +243,12 @@ namespace EnhancedDynamics.Editor
         
         private static void PhysBone_OnInspectorGUI_Prefix(UnityEditor.Editor __instance)
         {
-            Debug.Log("[EnhancedDynamics] PhysBone_OnInspectorGUI_Prefix called");
-            
             _currentPhysBone = __instance.target as VRCPhysBone;
             
             if (_currentPhysBone == null)
             {
-                Debug.Log("[EnhancedDynamics] _currentPhysBone is null, returning");
                 return;
             }
-            
-            Debug.Log($"[EnhancedDynamics] Drawing preview button for PhysBone: {_currentPhysBone.name}");
             
             // Add Preview Physics button at the top
             EditorGUILayout.Space(5);
@@ -264,16 +259,12 @@ namespace EnhancedDynamics.Editor
             if (GUILayout.Button(PhysicsPreviewManager.IsPreviewActive ? "Preview Physics (Active)" : "Preview Physics", 
                 GUILayout.Height(30)))
             {
-                Debug.Log("[EnhancedDynamics] PhysBone Preview Physics button clicked!");
-                
                 if (PhysicsPreviewManager.IsPreviewActive)
                 {
-                    Debug.Log("[EnhancedDynamics] Stopping PhysBone preview...");
                     PhysicsPreviewManager.StopPreview();
                 }
                 else
                 {
-                    Debug.Log("[EnhancedDynamics] Starting PhysBone preview...");
                     PhysicsPreviewManager.StartPreview();
                 }
             }
