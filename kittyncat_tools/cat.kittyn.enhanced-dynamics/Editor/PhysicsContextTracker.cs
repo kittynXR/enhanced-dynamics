@@ -94,7 +94,10 @@ namespace EnhancedDynamics.Editor
                 
                 if (cloneComponent != null)
                 {
-                    Debug.Log($"[EnhancedDynamics] ✓ Found corresponding clone component: {cloneComponent.GetType().Name} on {cloneComponent.gameObject.name}");
+                    if (EnhancedDynamicsSettings.DebugMode)
+                    {
+                        Debug.Log($"[EnhancedDynamics] ✓ Found corresponding clone component: {cloneComponent.GetType().Name} on {cloneComponent.gameObject.name}");
+                    }
                 }
                 else
                 {
@@ -125,7 +128,10 @@ namespace EnhancedDynamics.Editor
             
             try
             {
-                Debug.Log($"[EnhancedDynamics] Applying context to clone component: {cloneComponent.GetType().Name}");
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.Log($"[EnhancedDynamics] Applying context to clone component: {cloneComponent.GetType().Name}");
+                }
                 
                 // For physics components, we might want to ensure they're in optimal preview state
                 if (cloneComponent is VRCPhysBone physBone)
@@ -151,7 +157,10 @@ namespace EnhancedDynamics.Editor
             // Ensure PhysBone is enabled for preview
             if (!physBone.enabled)
             {
-                Debug.Log("[EnhancedDynamics] Enabling PhysBone for preview");
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.Log("[EnhancedDynamics] Enabling PhysBone for preview");
+                }
                 physBone.enabled = true;
             }
             
@@ -164,7 +173,10 @@ namespace EnhancedDynamics.Editor
             // Ensure collider is enabled for preview
             if (!collider.enabled)
             {
-                Debug.Log("[EnhancedDynamics] Enabling PhysBoneCollider for preview");
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.Log("[EnhancedDynamics] Enabling PhysBoneCollider for preview");
+                }
                 collider.enabled = true;
             }
         }
@@ -248,7 +260,10 @@ namespace EnhancedDynamics.Editor
                         targetTransform = targetTransform.Find(segment);
                         if (targetTransform == null)
                         {
-                            Debug.LogWarning($"[EnhancedDynamics] Could not find transform segment: {segment}");
+                            if (EnhancedDynamicsSettings.DebugMode)
+                            {
+                                Debug.LogWarning($"[EnhancedDynamics] Could not find transform segment: {segment}");
+                            }
                             return null;
                         }
                     }
@@ -290,7 +305,10 @@ namespace EnhancedDynamics.Editor
                     while (property.NextVisible(false));
                 }
                 
-                Debug.Log($"[EnhancedDynamics] Captured {_componentProperties.Count} properties for {component.GetType().Name}");
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.Log($"[EnhancedDynamics] Captured {_componentProperties.Count} properties for {component.GetType().Name}");
+                }
             }
             catch (Exception e)
             {
@@ -347,7 +365,10 @@ namespace EnhancedDynamics.Editor
             _componentProperties.Clear();
             _hasActiveContext = false;
             
-            Debug.Log("[EnhancedDynamics] Preview context cleared");
+            if (EnhancedDynamicsSettings.DebugMode)
+            {
+                Debug.Log("[EnhancedDynamics] Preview context cleared");
+            }
         }
         
         /// <summary>
@@ -381,7 +402,10 @@ namespace EnhancedDynamics.Editor
             {
                 var components = root.GetComponents<Component>();
                 var componentList = string.Join(", ", System.Array.ConvertAll(components, c => c.GetType().Name));
-                Debug.LogWarning($"{indent}{root.name} [{componentList}]");
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.LogWarning($"{indent}{root.name} [{componentList}]");
+                }
                 
                 // Recursively log children (limit depth to avoid spam)
                 if (indent.Length < 20) // Max 10 levels deep

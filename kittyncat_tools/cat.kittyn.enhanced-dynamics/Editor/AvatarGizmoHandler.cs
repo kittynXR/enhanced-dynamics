@@ -13,6 +13,7 @@ namespace EnhancedDynamics.Editor
         private static bool _gizmoEnabled = true;
         private static Vector3 _avatarCenter = Vector3.zero;
         private static bool _avatarCenterCached = false;
+        private static bool _avatarCenterLogged = false;
         
         /// <summary>
         /// Enable or disable the avatar translation gizmo
@@ -47,7 +48,16 @@ namespace EnhancedDynamics.Editor
                 {
                     _avatarCenter = CalculateAvatarCenter(physicsClone);
                     _avatarCenterCached = true;
-                    Debug.Log($"[EnhancedDynamics] Avatar center calculated: {_avatarCenter}");
+                    
+                    // Only log once per session, and only in debug mode
+                    if (!_avatarCenterLogged)
+                    {
+                        if (EnhancedDynamicsSettings.DebugMode)
+                        {
+                            Debug.Log($"[EnhancedDynamics] Avatar center calculated: {_avatarCenter}");
+                        }
+                        _avatarCenterLogged = true;
+                    }
                 }
                 
                 // Get current avatar rotation
@@ -100,6 +110,7 @@ namespace EnhancedDynamics.Editor
         public static void ResetCache()
         {
             _avatarCenterCached = false;
+            _avatarCenterLogged = false;
             _avatarCenter = Vector3.zero;
         }
         
@@ -114,7 +125,10 @@ namespace EnhancedDynamics.Editor
                     var hipTransform = animator.GetBoneTransform(HumanBodyBones.Hips);
                     if (hipTransform != null)
                     {
-                        Debug.Log($"[EnhancedDynamics] Using Unity Humanoid hip bone: {hipTransform.name} at {hipTransform.position}");
+                        if (EnhancedDynamicsSettings.DebugMode)
+                        {
+                            Debug.Log($"[EnhancedDynamics] Using Unity Humanoid hip bone: {hipTransform.name} at {hipTransform.position}");
+                        }
                         return hipTransform.position;
                     }
                     
@@ -122,22 +136,34 @@ namespace EnhancedDynamics.Editor
                     var spineTransform = animator.GetBoneTransform(HumanBodyBones.Spine);
                     if (spineTransform != null)
                     {
-                        Debug.Log($"[EnhancedDynamics] Using Unity Humanoid spine bone: {spineTransform.name} at {spineTransform.position}");
+                        if (EnhancedDynamicsSettings.DebugMode)
+                        {
+                            Debug.Log($"[EnhancedDynamics] Using Unity Humanoid spine bone: {spineTransform.name} at {spineTransform.position}");
+                        }
                         return spineTransform.position;
                     }
                     
-                    Debug.Log("[EnhancedDynamics] Humanoid avatar found but no hip/spine bones available");
+                    if (EnhancedDynamicsSettings.DebugMode)
+                    {
+                        Debug.Log("[EnhancedDynamics] Humanoid avatar found but no hip/spine bones available");
+                    }
                 }
                 else
                 {
-                    Debug.Log("[EnhancedDynamics] No Animator component or not a humanoid avatar, falling back to manual search");
+                    if (EnhancedDynamicsSettings.DebugMode)
+                    {
+                        Debug.Log("[EnhancedDynamics] No Animator component or not a humanoid avatar, falling back to manual search");
+                    }
                 }
                 
                 // Second priority: Manual bone search for non-humanoid avatars
                 var hipBone = FindBoneByName(avatar, new[] { "Hips", "Hip", "Pelvis", "mixamorig:Hips" });
                 if (hipBone != null)
                 {
-                    Debug.Log($"[EnhancedDynamics] Using manual search hip bone: {hipBone.name} at {hipBone.transform.position}");
+                    if (EnhancedDynamicsSettings.DebugMode)
+                    {
+                        Debug.Log($"[EnhancedDynamics] Using manual search hip bone: {hipBone.name} at {hipBone.transform.position}");
+                    }
                     return hipBone.transform.position;
                 }
                 
@@ -145,7 +171,10 @@ namespace EnhancedDynamics.Editor
                 var spineBone = FindBoneByName(avatar, new[] { "Spine", "Spine1", "mixamorig:Spine", "mixamorig:Spine1" });
                 if (spineBone != null)
                 {
-                    Debug.Log($"[EnhancedDynamics] Using manual search spine bone: {spineBone.name} at {spineBone.transform.position}");
+                    if (EnhancedDynamicsSettings.DebugMode)
+                    {
+                        Debug.Log($"[EnhancedDynamics] Using manual search spine bone: {spineBone.name} at {spineBone.transform.position}");
+                    }
                     return spineBone.transform.position;
                 }
                 
@@ -156,7 +185,10 @@ namespace EnhancedDynamics.Editor
                     var viewPosition = avatar.transform.TransformPoint(avatarDescriptor.ViewPosition);
                     // Estimate center as about 60% down from head to feet
                     var estimatedCenter = new Vector3(viewPosition.x, viewPosition.y - (viewPosition.y - avatar.transform.position.y) * 0.6f, viewPosition.z);
-                    Debug.Log($"[EnhancedDynamics] Using estimated center from ViewPosition: {estimatedCenter}");
+                    if (EnhancedDynamicsSettings.DebugMode)
+                    {
+                        Debug.Log($"[EnhancedDynamics] Using estimated center from ViewPosition: {estimatedCenter}");
+                    }
                     return estimatedCenter;
                 }
                 
@@ -169,12 +201,18 @@ namespace EnhancedDynamics.Editor
                     {
                         bounds.Encapsulate(renderers[i].bounds);
                     }
-                    Debug.Log($"[EnhancedDynamics] Using renderer bounds center: {bounds.center}");
+                    if (EnhancedDynamicsSettings.DebugMode)
+                    {
+                        Debug.Log($"[EnhancedDynamics] Using renderer bounds center: {bounds.center}");
+                    }
                     return bounds.center;
                 }
                 
                 // Final fallback: Use avatar root position
-                Debug.Log($"[EnhancedDynamics] Using avatar root position: {avatar.transform.position}");
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.Log($"[EnhancedDynamics] Using avatar root position: {avatar.transform.position}");
+                }
                 return avatar.transform.position;
             }
             catch (Exception e)
@@ -216,8 +254,8 @@ namespace EnhancedDynamics.Editor
         {
             try
             {
-                // Record undo operation
-                Undo.RecordObject(avatar.transform, "Move Avatar");
+                // Skip undo recording during physics preview to avoid conflicts with physics system
+                // Changes are temporary and will be discarded when exiting preview mode
                 
                 // Apply translation to avatar root
                 avatar.transform.position += offset;
@@ -232,8 +270,8 @@ namespace EnhancedDynamics.Editor
         {
             try
             {
-                // Record undo operation
-                Undo.RecordObject(avatar.transform, "Rotate Avatar");
+                // Skip undo recording during physics preview to avoid conflicts with physics system
+                // Changes are temporary and will be discarded when exiting preview mode
                 
                 // Apply rotation to avatar root
                 avatar.transform.rotation = newRotation;

@@ -49,7 +49,10 @@ namespace EnhancedDynamics.Editor
             
             if (EnhancedDynamicsSettings.DebugMode)
             {
-                Debug.Log("[EnhancedDynamics] Starting build callback interception...");
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.Log("[EnhancedDynamics] Starting build callback interception...");
+                }
             }
             
             try
@@ -60,7 +63,10 @@ namespace EnhancedDynamics.Editor
                 _isIntercepting = true;
                 if (EnhancedDynamicsSettings.DebugMode)
                 {
-                    Debug.Log("[EnhancedDynamics] Build callback interception active");
+                    if (EnhancedDynamicsSettings.DebugMode)
+                    {
+                        Debug.Log("[EnhancedDynamics] Build callback interception active");
+                    }
                 }
             }
             catch (Exception e)
@@ -82,7 +88,10 @@ namespace EnhancedDynamics.Editor
             
             if (EnhancedDynamicsSettings.DebugMode)
             {
-                Debug.Log("[EnhancedDynamics] Stopping build callback interception...");
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.Log("[EnhancedDynamics] Stopping build callback interception...");
+                }
             }
             
             try
@@ -91,7 +100,10 @@ namespace EnhancedDynamics.Editor
                 RestoreInitializeOnLoadMethods();
                 
                 _isIntercepting = false;
-                Debug.Log("[EnhancedDynamics] Build callbacks restored");
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.Log("[EnhancedDynamics] Build callbacks restored");
+                }
             }
             catch (Exception e)
             {
@@ -101,11 +113,17 @@ namespace EnhancedDynamics.Editor
         
         private static void InterceptBuildProcessors()
         {
-            Debug.Log("[EnhancedDynamics] Attempting to intercept build processors...");
+            if (EnhancedDynamicsSettings.DebugMode)
+            {
+                Debug.Log("[EnhancedDynamics] Attempting to intercept build processors...");
+            }
             
             // First, let's try a different approach - intercept through BuildPipeline
             var buildPipelineType = typeof(BuildPipeline);
-            Debug.Log($"[EnhancedDynamics] BuildPipeline type: {buildPipelineType}");
+            if (EnhancedDynamicsSettings.DebugMode)
+            {
+                Debug.Log($"[EnhancedDynamics] BuildPipeline type: {buildPipelineType}");
+            }
             
             // Get all build interfaces from the current domain
             var assemblies = AppDomain.CurrentDomain.GetAssemblies();
@@ -118,19 +136,28 @@ namespace EnhancedDynamics.Editor
                         // Check for IPreprocessBuildWithReport implementations
                         if (typeof(IPreprocessBuildWithReport).IsAssignableFrom(type) && !type.IsInterface && !type.IsAbstract)
                         {
-                            Debug.Log($"[EnhancedDynamics] Found IPreprocessBuildWithReport: {type.FullName} in {assembly.GetName().Name}");
+                            if (EnhancedDynamicsSettings.DebugMode)
+                            {
+                                Debug.Log($"[EnhancedDynamics] Found IPreprocessBuildWithReport: {type.FullName} in {assembly.GetName().Name}");
+                            }
                         }
                         
                         // Check for IPostprocessBuildWithReport implementations
                         if (typeof(IPostprocessBuildWithReport).IsAssignableFrom(type) && !type.IsInterface && !type.IsAbstract)
                         {
-                            Debug.Log($"[EnhancedDynamics] Found IPostprocessBuildWithReport: {type.FullName} in {assembly.GetName().Name}");
+                            if (EnhancedDynamicsSettings.DebugMode)
+                            {
+                                Debug.Log($"[EnhancedDynamics] Found IPostprocessBuildWithReport: {type.FullName} in {assembly.GetName().Name}");
+                            }
                         }
                         
                         // Check for IProcessSceneWithReport implementations
                         if (typeof(IProcessSceneWithReport).IsAssignableFrom(type) && !type.IsInterface && !type.IsAbstract)
                         {
-                            Debug.Log($"[EnhancedDynamics] Found IProcessSceneWithReport: {type.FullName} in {assembly.GetName().Name}");
+                            if (EnhancedDynamicsSettings.DebugMode)
+                            {
+                                Debug.Log($"[EnhancedDynamics] Found IProcessSceneWithReport: {type.FullName} in {assembly.GetName().Name}");
+                            }
                         }
                     }
                 }
@@ -167,7 +194,10 @@ namespace EnhancedDynamics.Editor
             var processorType = buildPlayerWindowType.Assembly.GetType("UnityEditor.BuildPlayerProcessor");
             if (processorType != null)
             {
-                Debug.Log($"[EnhancedDynamics] Found BuildPlayerProcessor type: {processorType}");
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.Log($"[EnhancedDynamics] Found BuildPlayerProcessor type: {processorType}");
+                }
                 
                 // Get all build callbacks through reflection
                 InterceptCallbackList<IPreprocessBuildWithReport>(processorType, "buildPreprocessors", _removedPreprocessCallbacks);
@@ -184,7 +214,10 @@ namespace EnhancedDynamics.Editor
             if (handlerType != null)
             {
                 // Additional interception points if needed
-                Debug.Log($"[EnhancedDynamics] Found BuildPlayerHandler type: {handlerType}");
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.Log($"[EnhancedDynamics] Found BuildPlayerHandler type: {handlerType}");
+                }
             }
         }
         
@@ -214,11 +247,17 @@ namespace EnhancedDynamics.Editor
                     {
                         storage.Add(callback);
                         list.RemoveAt(i);
-                        Debug.Log($"[EnhancedDynamics] Removed {callback.GetType().FullName} from {fieldName}");
+                        if (EnhancedDynamicsSettings.DebugMode)
+                        {
+                            Debug.Log($"[EnhancedDynamics] Removed {callback.GetType().FullName} from {fieldName}");
+                        }
                     }
                 }
                 
-                Debug.Log($"[EnhancedDynamics] Intercepted {storage.Count} callbacks from {fieldName}");
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.Log($"[EnhancedDynamics] Intercepted {storage.Count} callbacks from {fieldName}");
+                }
             }
             catch (Exception e)
             {
@@ -245,7 +284,10 @@ namespace EnhancedDynamics.Editor
                         {
                             EditorApplication.playModeStateChanged -= (Action<PlayModeStateChange>)d;
                             _removedInitializeCallbacks[d.Method] = d;
-                            Debug.Log($"[EnhancedDynamics] Removed playModeStateChanged callback: {d.Method.DeclaringType?.FullName}.{d.Method.Name}");
+                            if (EnhancedDynamicsSettings.DebugMode)
+                            {
+                                Debug.Log($"[EnhancedDynamics] Removed playModeStateChanged callback: {d.Method.DeclaringType?.FullName}.{d.Method.Name}");
+                            }
                         }
                     }
                 }
@@ -290,7 +332,10 @@ namespace EnhancedDynamics.Editor
                 foreach (var callback in storage)
                 {
                     list.Add(callback);
-                    Debug.Log($"[EnhancedDynamics] Restored {callback.GetType().FullName} to {fieldName}");
+                    if (EnhancedDynamicsSettings.DebugMode)
+                    {
+                        Debug.Log($"[EnhancedDynamics] Restored {callback.GetType().FullName} to {fieldName}");
+                    }
                 }
             }
             catch (Exception e)
@@ -305,7 +350,10 @@ namespace EnhancedDynamics.Editor
             foreach (var kvp in _removedInitializeCallbacks)
             {
                 EditorApplication.playModeStateChanged += (Action<PlayModeStateChange>)kvp.Value;
-                Debug.Log($"[EnhancedDynamics] Restored playModeStateChanged callback: {kvp.Key.DeclaringType?.FullName}.{kvp.Key.Name}");
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.Log($"[EnhancedDynamics] Restored playModeStateChanged callback: {kvp.Key.DeclaringType?.FullName}.{kvp.Key.Name}");
+                }
             }
             
             _removedInitializeCallbacks.Clear();
@@ -327,7 +375,10 @@ namespace EnhancedDynamics.Editor
             
             if (!isAllowed)
             {
-                Debug.Log($"[EnhancedDynamics] Blocking callback: {type.FullName} (Namespace: {namespaceName}, Assembly: {assemblyName})");
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.Log($"[EnhancedDynamics] Blocking callback: {type.FullName} (Namespace: {namespaceName}, Assembly: {assemblyName})");
+                }
             }
             
             return isAllowed;

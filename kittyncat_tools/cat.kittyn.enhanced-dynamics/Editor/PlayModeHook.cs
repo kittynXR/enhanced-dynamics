@@ -46,7 +46,10 @@ namespace EnhancedDynamics.Editor
         
         private static void OnPlayModeStateChanged(PlayModeStateChange state)
         {
-            Debug.Log($"[EnhancedDynamics] Play mode state changed: {state}");
+            if (EnhancedDynamicsSettings.DebugMode)
+            {
+                Debug.Log($"[EnhancedDynamics] Play mode state changed: {state}");
+            }
             
             switch (state)
             {
@@ -54,7 +57,10 @@ namespace EnhancedDynamics.Editor
                     // About to enter play mode
                     if (_isPhysicsPreviewRequested)
                     {
-                        Debug.Log("[EnhancedDynamics] Preparing physics preview with avatar hiding...");
+                        if (EnhancedDynamicsSettings.DebugMode)
+                        {
+                            Debug.Log("[EnhancedDynamics] Preparing physics preview with avatar hiding...");
+                        }
                         
                         // 1. Hide all avatars and create physics clone BEFORE disabling anything
                         if (!AvatarHiding.HideAvatarsAndCreatePhysicsClone())
@@ -84,7 +90,10 @@ namespace EnhancedDynamics.Editor
                     // Now in play mode
                     if (_wasIntercepting)
                     {
-                        Debug.Log("[EnhancedDynamics] Entered play mode with intercepted callbacks");
+                        if (EnhancedDynamicsSettings.DebugMode)
+                        {
+                            Debug.Log("[EnhancedDynamics] Entered play mode with intercepted callbacks");
+                        }
                         
                         // Show the floating UI
                         PhysicsPreviewUI.ShowUI();
@@ -98,7 +107,10 @@ namespace EnhancedDynamics.Editor
                     // About to exit play mode
                     if (_wasIntercepting)
                     {
-                        Debug.Log("[EnhancedDynamics] Exiting physics preview mode...");
+                        if (EnhancedDynamicsSettings.DebugMode)
+                        {
+                            Debug.Log("[EnhancedDynamics] Exiting physics preview mode...");
+                        }
                         
                         // Hide the floating UI
                         PhysicsPreviewUI.HideUI();
@@ -109,7 +121,10 @@ namespace EnhancedDynamics.Editor
                     // Back in edit mode
                     if (_wasIntercepting)
                     {
-                        Debug.Log("[EnhancedDynamics] Restoring avatars and build callbacks...");
+                        if (EnhancedDynamicsSettings.DebugMode)
+                        {
+                            Debug.Log("[EnhancedDynamics] Restoring avatars and build callbacks...");
+                        }
                         
                         // 1. Restore hidden avatars
                         AvatarHiding.RestoreAvatars();

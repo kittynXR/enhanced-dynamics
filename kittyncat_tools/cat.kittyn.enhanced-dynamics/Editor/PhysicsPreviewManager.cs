@@ -10,14 +10,20 @@ namespace EnhancedDynamics.Editor
         [MenuItem("Tools/⚙️🎨 kittyn.cat 🐟/Enhanced Dynamics/🐟 Enter Physics Preview", false, 1501)]
         public static void StartPhysicsPreview()
         {
-            Debug.Log("[EnhancedDynamics] Menu: Enter Physics Preview clicked");
+            if (EnhancedDynamicsSettings.DebugMode)
+            {
+                Debug.Log("[EnhancedDynamics] Menu: Enter Physics Preview clicked");
+            }
             StartPreview();
         }
         
         [MenuItem("Tools/⚙️🎨 kittyn.cat 🐟/Enhanced Dynamics/🐟 Exit Physics Preview", false, 1502)]
         public static void StopPhysicsPreview()
         {
-            Debug.Log("[EnhancedDynamics] Menu: Exit Physics Preview clicked");
+            if (EnhancedDynamicsSettings.DebugMode)
+            {
+                Debug.Log("[EnhancedDynamics] Menu: Exit Physics Preview clicked");
+            }
             StopPreview();
         }
         
@@ -34,11 +40,17 @@ namespace EnhancedDynamics.Editor
         
         public static void StartPreview()
         {
-            Debug.Log("[EnhancedDynamics] === StartPreview() called ===");
+            if (EnhancedDynamicsSettings.DebugMode)
+            {
+                Debug.Log("[EnhancedDynamics] === StartPreview() called ===");
+            }
             
             if (IsPreviewActive)
             {
-                Debug.Log("[EnhancedDynamics] Preview already active, returning");
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.Log("[EnhancedDynamics] Preview already active, returning");
+                }
                 return;
             }
             
@@ -48,7 +60,10 @@ namespace EnhancedDynamics.Editor
                 return;
             }
             
-            Debug.Log("[EnhancedDynamics] Starting VRChat Physics Preview with quality of life features");
+            if (EnhancedDynamicsSettings.DebugMode)
+            {
+                Debug.Log("[EnhancedDynamics] Starting VRChat Physics Preview with quality of life features");
+            }
             
             try
             {
@@ -76,7 +91,10 @@ namespace EnhancedDynamics.Editor
                 // Enter play mode - VRChat SDK will initialize physics naturally
                 EditorApplication.EnterPlaymode();
                 
-                Debug.Log("[EnhancedDynamics] Entering play mode for physics preview...");
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.Log("[EnhancedDynamics] Entering play mode for physics preview...");
+                }
             }
             catch (Exception e)
             {
@@ -100,18 +118,27 @@ namespace EnhancedDynamics.Editor
         {
             if (!IsPreviewActive)
             {
-                Debug.Log("[EnhancedDynamics] Preview not active, returning");
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.Log("[EnhancedDynamics] Preview not active, returning");
+                }
                 return;
             }
             
-            Debug.Log("[EnhancedDynamics] Stopping VRChat Physics Preview");
+            if (EnhancedDynamicsSettings.DebugMode)
+            {
+                Debug.Log("[EnhancedDynamics] Stopping VRChat Physics Preview");
+            }
             
             try
             {
                 // Exit play mode - this will trigger callback restoration
                 EditorApplication.ExitPlaymode();
                 
-                Debug.Log("[EnhancedDynamics] Exiting play mode...");
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.Log("[EnhancedDynamics] Exiting play mode...");
+                }
             }
             catch (Exception e)
             {

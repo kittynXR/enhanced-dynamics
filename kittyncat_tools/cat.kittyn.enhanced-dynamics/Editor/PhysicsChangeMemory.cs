@@ -68,7 +68,10 @@ namespace EnhancedDynamics.Editor
             {
                 if (EnhancedDynamicsSettings.DebugMode)
                 {
-                    Debug.Log("[EnhancedDynamics] Capturing original component values before hiding avatar...");
+                    if (EnhancedDynamicsSettings.DebugMode)
+                    {
+                        Debug.Log("[EnhancedDynamics] Capturing original component values before hiding avatar...");
+                    }
                 }
                 _originalComponentSnapshots.Clear();
                 
@@ -89,7 +92,10 @@ namespace EnhancedDynamics.Editor
                 
                 if (EnhancedDynamicsSettings.DebugMode)
                 {
-                    Debug.Log($"[EnhancedDynamics] ✓ Captured original values for {_originalComponentSnapshots.Count} components");
+                    if (EnhancedDynamicsSettings.DebugMode)
+                    {
+                        Debug.Log($"[EnhancedDynamics] ✓ Captured original values for {_originalComponentSnapshots.Count} components");
+                    }
                 }
             }
             catch (Exception e)
@@ -103,7 +109,10 @@ namespace EnhancedDynamics.Editor
             var components = avatar.GetComponentsInChildren<T>(true);
             if (EnhancedDynamicsSettings.DebugMode)
             {
-                Debug.Log($"[EnhancedDynamics] Found {components.Length} {typeof(T).Name} components to capture");
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.Log($"[EnhancedDynamics] Found {components.Length} {typeof(T).Name} components to capture");
+                }
             }
             
             foreach (var component in components)
@@ -185,11 +194,17 @@ namespace EnhancedDynamics.Editor
             {
                 if (EnhancedDynamicsSettings.DebugMode)
                 {
-                    Debug.Log("[EnhancedDynamics] Capturing physics changes to memory...");
+                    if (EnhancedDynamicsSettings.DebugMode)
+                    {
+                        Debug.Log("[EnhancedDynamics] Capturing physics changes to memory...");
+                    }
                 }
                 if (EnhancedDynamicsSettings.DebugMode)
                 {
-                    Debug.Log($"[EnhancedDynamics] Comparing against {_originalComponentSnapshots.Count} original component snapshots");
+                    if (EnhancedDynamicsSettings.DebugMode)
+                    {
+                        Debug.Log($"[EnhancedDynamics] Comparing against {_originalComponentSnapshots.Count} original component snapshots");
+                    }
                 }
                 
                 var changes = new List<ComponentChange>();
@@ -220,13 +235,19 @@ namespace EnhancedDynamics.Editor
                     
                     if (EnhancedDynamicsSettings.DebugMode)
                     {
-                        Debug.Log($"[EnhancedDynamics] ✓ Captured {totalProperties} property changes from {changes.Count} components to memory");
+                        if (EnhancedDynamicsSettings.DebugMode)
+                        {
+                            Debug.Log($"[EnhancedDynamics] ✓ Captured {totalProperties} property changes from {changes.Count} components to memory");
+                        }
                     }
                     return true;
                 }
                 else
                 {
-                    Debug.Log("[EnhancedDynamics] No changes detected to capture");
+                    if (EnhancedDynamicsSettings.DebugMode)
+                    {
+                        Debug.Log("[EnhancedDynamics] No changes detected to capture");
+                    }
                     return false;
                 }
             }
@@ -244,13 +265,19 @@ namespace EnhancedDynamics.Editor
         {
             if (!_hasPendingChanges || string.IsNullOrEmpty(_pendingChangesJson))
             {
-                Debug.Log("[EnhancedDynamics] No pending changes to apply");
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.Log("[EnhancedDynamics] No pending changes to apply");
+                }
                 return false;
             }
             
             try
             {
-                Debug.Log("[EnhancedDynamics] Applying pending physics changes from memory...");
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.Log("[EnhancedDynamics] Applying pending physics changes from memory...");
+                }
                 
                 // Find the original avatar
                 var originalAvatar = FindGameObjectByPath(_originalAvatarPath);
@@ -283,12 +310,18 @@ namespace EnhancedDynamics.Editor
                 _originalAvatarPath = "";
                 _hasPendingChanges = false;
                 
-                Debug.Log($"[EnhancedDynamics] ✓ Applied changes to {appliedCount} components from memory");
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.Log($"[EnhancedDynamics] ✓ Applied changes to {appliedCount} components from memory");
+                }
                 
                 // Log details of what was applied
                 foreach (var componentChange in changeList.changes)
                 {
-                    Debug.Log($"[EnhancedDynamics] Applied {componentChange.propertyChanges.Count} changes to {componentChange.componentTypeName} at {componentChange.componentPath}");
+                    if (EnhancedDynamicsSettings.DebugMode)
+                    {
+                        Debug.Log($"[EnhancedDynamics] Applied {componentChange.propertyChanges.Count} changes to {componentChange.componentTypeName} at {componentChange.componentPath}");
+                    }
                 }
                 
                 // Show notification
@@ -323,18 +356,30 @@ namespace EnhancedDynamics.Editor
                     var componentType = cloneComponent.GetType().AssemblyQualifiedName;
                     var snapshotKey = $"{clonePath}#{componentType}";
                     
-                    Debug.Log($"[EnhancedDynamics] Looking for snapshot with key: {snapshotKey}");
-                    Debug.Log($"[EnhancedDynamics] Clone component: {cloneComponent.name} (Type: {componentType})");
+                    if (EnhancedDynamicsSettings.DebugMode)
+                    {
+                        Debug.Log($"[EnhancedDynamics] Looking for snapshot with key: {snapshotKey}");
+                    }
+                    if (EnhancedDynamicsSettings.DebugMode)
+                    {
+                        Debug.Log($"[EnhancedDynamics] Clone component: {cloneComponent.name} (Type: {componentType})");
+                    }
                     
                     if (_originalComponentSnapshots.TryGetValue(snapshotKey, out var snapshot))
                     {
-                        Debug.Log($"[EnhancedDynamics] Found matching snapshot for {componentType} at {clonePath}");
+                        if (EnhancedDynamicsSettings.DebugMode)
+                        {
+                            Debug.Log($"[EnhancedDynamics] Found matching snapshot for {componentType} at {clonePath}");
+                        }
                         
                         var componentChange = CompareWithSnapshot(cloneComponent, snapshot, clonePath);
                         if (componentChange != null && componentChange.propertyChanges.Count > 0)
                         {
                             changes.Add(componentChange);
-                            Debug.Log($"[EnhancedDynamics] Found {componentChange.propertyChanges.Count} changes in {typeof(T).Name} at {clonePath}");
+                            if (EnhancedDynamicsSettings.DebugMode)
+                            {
+                                Debug.Log($"[EnhancedDynamics] Found {componentChange.propertyChanges.Count} changes in {typeof(T).Name} at {clonePath}");
+                            }
                         }
                     }
                     else
@@ -508,8 +553,11 @@ namespace EnhancedDynamics.Editor
                     var prop = so.FindProperty(propertyChange.propertyPath);
                     if (prop != null)
                     {
-                        Debug.Log($"[EnhancedDynamics] Applying change to property: {propertyChange.propertyPath}");
-                        Debug.Log($"  New value: {propertyChange.serializedValue}");
+                        if (EnhancedDynamicsSettings.DebugMode)
+                        {
+                            Debug.Log($"[EnhancedDynamics] Applying change to property: {propertyChange.propertyPath}");
+                            Debug.Log($"  New value: {propertyChange.serializedValue}");
+                        }
                         DeserializePropertyValue(prop, propertyChange.serializedValue, propertyChange.propertyType);
                     }
                     else
@@ -521,7 +569,10 @@ namespace EnhancedDynamics.Editor
                 so.ApplyModifiedProperties();
                 EditorUtility.SetDirty(targetComponent);
                 
-                Debug.Log($"[EnhancedDynamics] Applied {componentChange.propertyChanges.Count} changes to {componentType.Name} on {targetTransform.name}");
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.Log($"[EnhancedDynamics] Applied {componentChange.propertyChanges.Count} changes to {componentType.Name} on {targetTransform.name}");
+                }
                 return true;
             }
             catch (Exception e)
@@ -603,7 +654,10 @@ namespace EnhancedDynamics.Editor
                             return property.arraySize.ToString();
                         }
                         // For other generic types, we'll need special handling
-                        Debug.Log($"[EnhancedDynamics] Generic property type at {property.propertyPath} - may need special handling");
+                        if (EnhancedDynamicsSettings.DebugMode)
+                        {
+                            Debug.Log($"[EnhancedDynamics] Generic property type at {property.propertyPath} - may need special handling");
+                        }
                         return "generic";
                     default:
                         Debug.LogWarning($"[EnhancedDynamics] Unsupported property type for serialization: {property.propertyType} at {property.propertyPath}");
@@ -805,7 +859,10 @@ namespace EnhancedDynamics.Editor
             var parts = typeName.Split(',');
             var simpleTypeName = parts[0].Trim();
             
-            Debug.Log($"[EnhancedDynamics] Searching for type: {simpleTypeName}");
+            if (EnhancedDynamicsSettings.DebugMode)
+            {
+                Debug.Log($"[EnhancedDynamics] Searching for type: {simpleTypeName}");
+            }
             
             // Check all loaded assemblies
             foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
@@ -820,7 +877,10 @@ namespace EnhancedDynamics.Editor
                     var type = assembly.GetType(simpleTypeName);
                     if (type != null)
                     {
-                        Debug.Log($"[EnhancedDynamics] Found type {simpleTypeName} in assembly {assemblyName}");
+                        if (EnhancedDynamicsSettings.DebugMode)
+                        {
+                            Debug.Log($"[EnhancedDynamics] Found type {simpleTypeName} in assembly {assemblyName}");
+                        }
                         return type;
                     }
                 }
@@ -857,7 +917,10 @@ namespace EnhancedDynamics.Editor
         {
             if (state == PlayModeStateChange.EnteredEditMode && _hasPendingChanges)
             {
-                Debug.Log("[EnhancedDynamics] Entered edit mode with pending physics changes");
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.Log("[EnhancedDynamics] Entered edit mode with pending physics changes");
+                }
                 
                 // Apply pending changes after a small delay to ensure everything is initialized
                 EditorApplication.delayCall += () =>
@@ -880,7 +943,10 @@ namespace EnhancedDynamics.Editor
             _pendingChangesJson = "";
             _originalAvatarPath = "";
             _hasPendingChanges = false;
-            Debug.Log("[EnhancedDynamics] Cleared pending physics changes");
+            if (EnhancedDynamicsSettings.DebugMode)
+            {
+                Debug.Log("[EnhancedDynamics] Cleared pending physics changes");
+            }
         }
         
         /// <summary>
@@ -889,7 +955,10 @@ namespace EnhancedDynamics.Editor
         public static void ClearOriginalSnapshots()
         {
             _originalComponentSnapshots.Clear();
-            Debug.Log("[EnhancedDynamics] Cleared original component snapshots");
+            if (EnhancedDynamicsSettings.DebugMode)
+            {
+                Debug.Log("[EnhancedDynamics] Cleared original component snapshots");
+            }
         }
         
         [Serializable]

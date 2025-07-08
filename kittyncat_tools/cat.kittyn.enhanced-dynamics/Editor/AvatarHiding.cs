@@ -92,7 +92,10 @@ namespace EnhancedDynamics.Editor
                             selectedAvatar = avatar.gameObject;
                             if (EnhancedDynamicsSettings.DebugMode)
                             {
+                                if (EnhancedDynamicsSettings.DebugMode)
+                            {
                                 Debug.Log($"[EnhancedDynamics] Auto-selected avatar with PhysBones: {selectedAvatar.name}");
+                            }
                             }
                             break;
                         }
@@ -121,12 +124,18 @@ namespace EnhancedDynamics.Editor
                         hiddenCount++;
                         if (EnhancedDynamicsSettings.DebugMode)
                         {
+                            if (EnhancedDynamicsSettings.DebugMode)
+                        {
                             Debug.Log($"[EnhancedDynamics] ✓ Hidden active avatar: {rootObj.name}");
+                        }
                         }
                     }
                     else
                     {
-                        Debug.Log($"[EnhancedDynamics] • Avatar already inactive: {rootObj.name}");
+                        if (EnhancedDynamicsSettings.DebugMode)
+                        {
+                            Debug.Log($"[EnhancedDynamics] • Avatar already inactive: {rootObj.name}");
+                        }
                     }
                     
                     // Verify the avatar is actually hidden
@@ -136,7 +145,10 @@ namespace EnhancedDynamics.Editor
                     }
                 }
                 
-                Debug.Log($"[EnhancedDynamics] Avatar hiding complete: {hiddenCount} active avatars hidden out of {avatars.Length} total");
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.Log($"[EnhancedDynamics] Avatar hiding complete: {hiddenCount} active avatars hidden out of {avatars.Length} total");
+                }
                 
                 // Create physics clone if we have a selected avatar
                 if (selectedAvatar != null)
@@ -156,26 +168,41 @@ namespace EnhancedDynamics.Editor
                                 
                                 // Select the corresponding component in the clone instead of just the root
                                 Selection.activeGameObject = cloneComponent.gameObject;
-                                Debug.Log($"[EnhancedDynamics] Selected clone component: {cloneComponent.GetType().Name} on {cloneComponent.gameObject.name}");
+                                if (EnhancedDynamicsSettings.DebugMode)
+                                {
+                                    Debug.Log($"[EnhancedDynamics] Selected clone component: {cloneComponent.GetType().Name} on {cloneComponent.gameObject.name}");
+                                }
                                 
                                 // Ping the object to expand hierarchy and highlight it
                                 EditorApplication.delayCall += () =>
                                 {
                                     EditorGUIUtility.PingObject(cloneComponent.gameObject);
-                                    Debug.Log($"[EnhancedDynamics] Pinged clone component to expand hierarchy: {cloneComponent.gameObject.name}");
+                                    if (EnhancedDynamicsSettings.DebugMode)
+                                    {
+                                        Debug.Log($"[EnhancedDynamics] Pinged clone component to expand hierarchy: {cloneComponent.gameObject.name}");
+                                    }
                                 };
                             }
                             else
                             {
                                 // Fallback to selecting the clone root
                                 Selection.activeGameObject = _physicsClone;
-                                Debug.Log("[EnhancedDynamics] No corresponding component found, selected clone root");
+                                if (EnhancedDynamicsSettings.DebugMode)
+                                {
+                                    Debug.Log("[EnhancedDynamics] No corresponding component found, selected clone root");
+                                }
                                 
                                 // Ping the clone root to expand hierarchy
                                 EditorApplication.delayCall += () =>
                                 {
                                     EditorGUIUtility.PingObject(_physicsClone);
+                                    if (EnhancedDynamicsSettings.DebugMode)
+                                    {
+                                        if (EnhancedDynamicsSettings.DebugMode)
+                                {
                                     Debug.Log($"[EnhancedDynamics] Pinged clone root to expand hierarchy: {_physicsClone.name}");
+                                }
+                                    }
                                 };
                             }
                         }
@@ -183,13 +210,19 @@ namespace EnhancedDynamics.Editor
                         {
                             // No context, just select the clone root
                             Selection.activeGameObject = _physicsClone;
-                            Debug.Log("[EnhancedDynamics] No active context, selected clone root");
+                            if (EnhancedDynamicsSettings.DebugMode)
+                            {
+                                Debug.Log("[EnhancedDynamics] No active context, selected clone root");
+                            }
                             
                             // Ping the clone root to expand hierarchy
                             EditorApplication.delayCall += () =>
                             {
                                 EditorGUIUtility.PingObject(_physicsClone);
-                                Debug.Log($"[EnhancedDynamics] Pinged clone root to expand hierarchy: {_physicsClone.name}");
+                                if (EnhancedDynamicsSettings.DebugMode)
+                                {
+                                    Debug.Log($"[EnhancedDynamics] Pinged clone root to expand hierarchy: {_physicsClone.name}");
+                                }
                             };
                         }
                     }
@@ -200,7 +233,10 @@ namespace EnhancedDynamics.Editor
                 }
                 
                 _isHiding = true;
-                Debug.Log($"[EnhancedDynamics] Hidden {avatars.Length} avatars, created physics clone: {_physicsClone?.name}");
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.Log($"[EnhancedDynamics] Hidden {avatars.Length} avatars, created physics clone: {_physicsClone?.name}");
+                }
                 
                 return true;
             }
@@ -224,7 +260,10 @@ namespace EnhancedDynamics.Editor
             
             try
             {
-                Debug.Log("[EnhancedDynamics] Restoring hidden avatars...");
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.Log("[EnhancedDynamics] Restoring hidden avatars...");
+                }
                 
                 // Clear physics context
                 PhysicsContextTracker.ClearContext();
@@ -244,7 +283,10 @@ namespace EnhancedDynamics.Editor
                     if (avatar != null)
                     {
                         avatar.SetActive(wasActive);
-                        Debug.Log($"[EnhancedDynamics] Restored avatar: {avatar.name} (active: {wasActive})");
+                        if (EnhancedDynamicsSettings.DebugMode)
+                        {
+                            Debug.Log($"[EnhancedDynamics] Restored avatar: {avatar.name} (active: {wasActive})");
+                        }
                     }
                 }
                 
@@ -253,7 +295,10 @@ namespace EnhancedDynamics.Editor
                 {
                     GameObject.DestroyImmediate(_physicsClone);
                     _physicsClone = null;
-                    Debug.Log("[EnhancedDynamics] Destroyed physics clone");
+                    if (EnhancedDynamicsSettings.DebugMode)
+                    {
+                        Debug.Log("[EnhancedDynamics] Destroyed physics clone");
+                    }
                 }
                 
                 
@@ -261,7 +306,10 @@ namespace EnhancedDynamics.Editor
                 _originalAvatarForClone = null; // Clear reference
                 _isHiding = false;
                 
-                Debug.Log("[EnhancedDynamics] Avatar restoration complete");
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.Log("[EnhancedDynamics] Avatar restoration complete");
+                }
             }
             catch (Exception e)
             {
@@ -273,7 +321,10 @@ namespace EnhancedDynamics.Editor
         
         private static void CreatePhysicsClone(GameObject originalAvatar)
         {
-            Debug.Log($"[EnhancedDynamics] Creating physics clone of: {originalAvatar.name}");
+            if (EnhancedDynamicsSettings.DebugMode)
+            {
+                Debug.Log($"[EnhancedDynamics] Creating physics clone of: {originalAvatar.name}");
+            }
             
             // Create a copy of the avatar
             _physicsClone = GameObject.Instantiate(originalAvatar);
@@ -286,12 +337,18 @@ namespace EnhancedDynamics.Editor
             // Make sure the clone is active
             _physicsClone.SetActive(true);
             
-            Debug.Log($"[EnhancedDynamics] Physics clone created: {_physicsClone.name}");
+            if (EnhancedDynamicsSettings.DebugMode)
+            {
+                Debug.Log($"[EnhancedDynamics] Physics clone created: {_physicsClone.name}");
+            }
         }
         
         private static void CleanPhysicsClone(GameObject clone)
         {
-            Debug.Log($"[EnhancedDynamics] Cleaning non-physics components from clone...");
+            if (EnhancedDynamicsSettings.DebugMode)
+            {
+                Debug.Log($"[EnhancedDynamics] Cleaning non-physics components from clone...");
+            }
             
             // Get all components in the clone hierarchy
             var allComponents = clone.GetComponentsInChildren<Component>(true);
@@ -317,7 +374,14 @@ namespace EnhancedDynamics.Editor
                 }
             }
             
-            Debug.Log($"[EnhancedDynamics] Removed {removedCount} build-triggering components from clone");
+            // Fix VRChat physics system duplicate shape errors
+            // Reset physics component IDs to prevent conflicts
+            ResetPhysicsComponentIds(clone);
+            
+            if (EnhancedDynamicsSettings.DebugMode)
+            {
+                Debug.Log($"[EnhancedDynamics] Removed {removedCount} build-triggering components from clone");
+            }
         }
         
         private static bool IsEssentialComponent(Type componentType)
@@ -333,6 +397,42 @@ namespace EnhancedDynamics.Editor
                    componentType == typeof(VRCAvatarDescriptor);
         }
         
+        /// <summary>
+        /// Reset physics component IDs to prevent VRChat's "Shape with id X is already in execution group" error
+        /// </summary>
+        private static void ResetPhysicsComponentIds(GameObject clone)
+        {
+            try
+            {
+                // Get all PhysBone components in the clone
+                var physBones = clone.GetComponentsInChildren<VRCPhysBone>(true);
+                foreach (var physBone in physBones)
+                {
+                    // Force Unity to regenerate the component's internal ID
+                    physBone.enabled = false;
+                    physBone.enabled = true;
+                }
+                
+                // Get all PhysBoneCollider components in the clone
+                var physBoneColliders = clone.GetComponentsInChildren<VRCPhysBoneCollider>(true);
+                foreach (var collider in physBoneColliders)
+                {
+                    // Force Unity to regenerate the component's internal ID
+                    collider.enabled = false;
+                    collider.enabled = true;
+                }
+                
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.Log($"[EnhancedDynamics] Reset physics component IDs: {physBones.Length} PhysBones, {physBoneColliders.Length} PhysBoneColliders");
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[EnhancedDynamics] Error resetting physics component IDs: {e}");
+            }
+        }
+
         private static bool IsBuildTriggeringComponent(Type componentType)
         {
             var typeName = componentType.FullName ?? "";

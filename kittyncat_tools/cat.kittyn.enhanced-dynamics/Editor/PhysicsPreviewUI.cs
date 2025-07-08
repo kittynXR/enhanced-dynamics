@@ -45,7 +45,10 @@ namespace EnhancedDynamics.Editor
                 return;
             }
             
-            Debug.Log("[EnhancedDynamics] Showing physics preview UI");
+            if (EnhancedDynamicsSettings.DebugMode)
+            {
+                Debug.Log("[EnhancedDynamics] Showing physics preview UI");
+            }
             _isUIVisible = true;
             _changesSummaryDirty = true; // Mark for update
             _windowPositionCached = false; // Reset position cache
@@ -95,7 +98,10 @@ namespace EnhancedDynamics.Editor
                 return;
             }
             
-            Debug.Log("[EnhancedDynamics] Hiding physics preview UI");
+            if (EnhancedDynamicsSettings.DebugMode)
+            {
+                Debug.Log("[EnhancedDynamics] Hiding physics preview UI");
+            }
             _isUIVisible = false;
             
             // Single repaint instead of RepaintAll
@@ -139,7 +145,12 @@ namespace EnhancedDynamics.Editor
             }
             catch (Exception e)
             {
-                Debug.LogError($"[EnhancedDynamics] Error drawing avatar gizmo: {e}");
+                // Catch physics system conflicts and other errors during gizmo drawing
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.LogError($"[EnhancedDynamics] Error drawing avatar gizmo: {e}");
+                }
+                // Don't spam the console with gizmo errors in non-debug mode
             }
             
             // Begin GUI for overlay
