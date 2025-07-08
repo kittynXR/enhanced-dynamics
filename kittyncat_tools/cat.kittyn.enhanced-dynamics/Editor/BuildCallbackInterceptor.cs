@@ -47,7 +47,10 @@ namespace EnhancedDynamics.Editor
                 return;
             }
             
-            Debug.Log("[EnhancedDynamics] Starting build callback interception...");
+            if (EnhancedDynamicsSettings.DebugMode)
+            {
+                Debug.Log("[EnhancedDynamics] Starting build callback interception...");
+            }
             
             try
             {
@@ -55,7 +58,10 @@ namespace EnhancedDynamics.Editor
                 InterceptInitializeOnLoadMethods();
                 
                 _isIntercepting = true;
-                Debug.Log("[EnhancedDynamics] Build callback interception active");
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.Log("[EnhancedDynamics] Build callback interception active");
+                }
             }
             catch (Exception e)
             {
@@ -74,7 +80,10 @@ namespace EnhancedDynamics.Editor
                 return;
             }
             
-            Debug.Log("[EnhancedDynamics] Stopping build callback interception...");
+            if (EnhancedDynamicsSettings.DebugMode)
+            {
+                Debug.Log("[EnhancedDynamics] Stopping build callback interception...");
+            }
             
             try
             {

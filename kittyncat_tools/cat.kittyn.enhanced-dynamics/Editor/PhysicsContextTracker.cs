@@ -31,7 +31,10 @@ namespace EnhancedDynamics.Editor
             
             try
             {
-                Debug.Log($"[EnhancedDynamics] Setting preview context for component: {triggeringComponent.GetType().Name} on {triggeringComponent.gameObject.name}");
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.Log($"[EnhancedDynamics] Setting preview context for component: {triggeringComponent.GetType().Name} on {triggeringComponent.gameObject.name}");
+                }
                 
                 _triggeringComponent = triggeringComponent;
                 _originalAvatar = GetAvatarRoot(triggeringComponent.gameObject);
@@ -42,11 +45,14 @@ namespace EnhancedDynamics.Editor
                 
                 _hasActiveContext = true;
                 
-                Debug.Log($"[EnhancedDynamics] Preview context set successfully:");
-                Debug.Log($"  - Component: {triggeringComponent.GetType().Name}");
-                Debug.Log($"  - GameObject: {triggeringComponent.gameObject.name}");
-                Debug.Log($"  - Avatar: {_originalAvatar?.name}");
-                Debug.Log($"  - Component Path: {_componentPath}");
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.Log($"[EnhancedDynamics] Preview context set successfully:");
+                    Debug.Log($"  - Component: {triggeringComponent.GetType().Name}");
+                    Debug.Log($"  - GameObject: {triggeringComponent.gameObject.name}");
+                    Debug.Log($"  - Avatar: {_originalAvatar?.name}");
+                    Debug.Log($"  - Component Path: {_componentPath}");
+                }
             }
             catch (Exception e)
             {
@@ -71,9 +77,18 @@ namespace EnhancedDynamics.Editor
             
             try
             {
-                Debug.Log($"[EnhancedDynamics] Searching for corresponding clone component:");
-                Debug.Log($"  - Component path: {_componentPath}");
-                Debug.Log($"  - Component type: {_triggeringComponent?.GetType().Name}");
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.Log($"[EnhancedDynamics] Searching for corresponding clone component:");
+                }
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.Log($"  - Component path: {_componentPath}");
+                }
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.Log($"  - Component type: {_triggeringComponent?.GetType().Name}");
+                }
                 
                 var cloneComponent = FindComponentByPath(physicsClone, _componentPath, _triggeringComponent.GetType());
                 

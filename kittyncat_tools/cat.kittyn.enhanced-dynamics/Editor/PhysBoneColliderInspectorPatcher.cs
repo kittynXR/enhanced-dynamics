@@ -57,7 +57,10 @@ namespace EnhancedDynamics.Editor
         [MenuItem("Tools/⚙️🎨 kittyn.cat 🐟/Enhanced Dynamics/🐟 Reinitialize Patches", false, 1500)]
         private static void ReinitializePatches()
         {
-            Debug.Log("[EnhancedDynamics] Manual reinitialization requested");
+            if (EnhancedDynamicsSettings.DebugMode)
+            {
+                Debug.Log("[EnhancedDynamics] Manual reinitialization requested");
+            }
             
             // Clean up existing patches
             if (_harmony != null)
@@ -72,7 +75,10 @@ namespace EnhancedDynamics.Editor
         
         private static void DelayedInitialize()
         {
-            Debug.Log("[EnhancedDynamics] Delayed initialization starting...");
+            if (EnhancedDynamicsSettings.DebugMode)
+            {
+                Debug.Log("[EnhancedDynamics] Delayed initialization starting...");
+            }
             Initialize();
         }
         
@@ -83,22 +89,31 @@ namespace EnhancedDynamics.Editor
                 // Check if already initialized
                 if (_harmony != null)
                 {
+                    if (EnhancedDynamicsSettings.DebugMode)
+                {
                     Debug.Log("[EnhancedDynamics] Already initialized, cleaning up first...");
+                }
                     _harmony.UnpatchAll(HarmonyId);
                     SceneView.duringSceneGui -= OnSceneGUI;
                 }
                 
-                Debug.Log("[EnhancedDynamics] Starting initialization...");
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.Log("[EnhancedDynamics] Starting initialization...");
+                }
                 
                 _harmony = new Harmony(HarmonyId);
                 
-                // Log all VRC assemblies
-                Debug.Log("[EnhancedDynamics] Available VRC assemblies:");
-                foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+                // Log all VRC assemblies (only in debug mode)
+                if (EnhancedDynamicsSettings.DebugMode)
                 {
-                    if (assembly.FullName.Contains("VRC"))
+                    Debug.Log("[EnhancedDynamics] Available VRC assemblies:");
+                    foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
                     {
-                        Debug.Log($"[EnhancedDynamics]   - {assembly.FullName}");
+                        if (assembly.FullName.Contains("VRC"))
+                        {
+                            Debug.Log($"[EnhancedDynamics]   - {assembly.FullName}");
+                        }
                     }
                 }
                 
@@ -112,7 +127,10 @@ namespace EnhancedDynamics.Editor
                 SceneView.duringSceneGui -= OnSceneGUI; // Remove first to avoid duplicates
                 SceneView.duringSceneGui += OnSceneGUI;
                 
-                Debug.Log("[EnhancedDynamics] Initialization complete!");
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.Log("[EnhancedDynamics] Initialization complete!");
+                }
                 
             }
             catch (Exception e)
@@ -125,7 +143,10 @@ namespace EnhancedDynamics.Editor
         {
             try
             {
-                Debug.Log("[EnhancedDynamics] Searching for VRC PhysBone inspectors...");
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.Log("[EnhancedDynamics] Searching for VRC PhysBone inspectors...");
+                }
                 
                 Type colliderInspectorType = null;
                 Type physBoneInspectorType = null;
@@ -145,12 +166,18 @@ namespace EnhancedDynamics.Editor
                                         var inspectedType = customEditorAttr.GetType().GetField("m_InspectedType", BindingFlags.NonPublic | BindingFlags.Instance)?.GetValue(customEditorAttr) as Type;
                                         if (inspectedType == typeof(VRCPhysBoneCollider))
                                         {
-                                            Debug.Log($"[EnhancedDynamics] Found VRCPhysBoneCollider editor: {type.FullName}");
+                                            if (EnhancedDynamicsSettings.DebugMode)
+                                            {
+                                                Debug.Log($"[EnhancedDynamics] Found VRCPhysBoneCollider editor: {type.FullName}");
+                                            }
                                             colliderInspectorType = type;
                                         }
                                         else if (inspectedType == typeof(VRCPhysBone))
                                         {
-                                            Debug.Log($"[EnhancedDynamics] Found VRCPhysBone editor: {type.FullName}");
+                                            if (EnhancedDynamicsSettings.DebugMode)
+                                            {
+                                                Debug.Log($"[EnhancedDynamics] Found VRCPhysBone editor: {type.FullName}");
+                                            }
                                             physBoneInspectorType = type;
                                         }
                                     }
@@ -176,7 +203,10 @@ namespace EnhancedDynamics.Editor
                             prefix: new HarmonyMethod(prefix),
                             postfix: new HarmonyMethod(postfix));
                         
-                        Debug.Log("[EnhancedDynamics] Successfully patched VRCPhysBoneCollider inspector!");
+                        if (EnhancedDynamicsSettings.DebugMode)
+                        {
+                            Debug.Log("[EnhancedDynamics] Successfully patched VRCPhysBoneCollider inspector!");
+                        }
                     }
                 }
                 
@@ -195,7 +225,10 @@ namespace EnhancedDynamics.Editor
                             prefix: new HarmonyMethod(prefix),
                             postfix: new HarmonyMethod(postfix));
                         
-                        Debug.Log("[EnhancedDynamics] Successfully patched VRCPhysBone inspector!");
+                        if (EnhancedDynamicsSettings.DebugMode)
+                        {
+                            Debug.Log("[EnhancedDynamics] Successfully patched VRCPhysBone inspector!");
+                        }
                     }
                 }
             }

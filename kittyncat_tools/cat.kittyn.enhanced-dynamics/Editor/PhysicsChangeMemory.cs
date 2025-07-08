@@ -66,7 +66,10 @@ namespace EnhancedDynamics.Editor
             
             try
             {
-                Debug.Log("[EnhancedDynamics] Capturing original component values before hiding avatar...");
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.Log("[EnhancedDynamics] Capturing original component values before hiding avatar...");
+                }
                 _originalComponentSnapshots.Clear();
                 
                 // Capture PhysBone values
@@ -84,7 +87,10 @@ namespace EnhancedDynamics.Editor
                 // Store the avatar path for later reference
                 _originalAvatarPath = GetScenePath(avatar);
                 
-                Debug.Log($"[EnhancedDynamics] ✓ Captured original values for {_originalComponentSnapshots.Count} components");
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.Log($"[EnhancedDynamics] ✓ Captured original values for {_originalComponentSnapshots.Count} components");
+                }
             }
             catch (Exception e)
             {
@@ -95,7 +101,10 @@ namespace EnhancedDynamics.Editor
         private static void CaptureOriginalComponentValues<T>(GameObject avatar) where T : Component
         {
             var components = avatar.GetComponentsInChildren<T>(true);
-            Debug.Log($"[EnhancedDynamics] Found {components.Length} {typeof(T).Name} components to capture");
+            if (EnhancedDynamicsSettings.DebugMode)
+            {
+                Debug.Log($"[EnhancedDynamics] Found {components.Length} {typeof(T).Name} components to capture");
+            }
             
             foreach (var component in components)
             {
@@ -174,8 +183,14 @@ namespace EnhancedDynamics.Editor
             
             try
             {
-                Debug.Log("[EnhancedDynamics] Capturing physics changes to memory...");
-                Debug.Log($"[EnhancedDynamics] Comparing against {_originalComponentSnapshots.Count} original component snapshots");
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.Log("[EnhancedDynamics] Capturing physics changes to memory...");
+                }
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.Log($"[EnhancedDynamics] Comparing against {_originalComponentSnapshots.Count} original component snapshots");
+                }
                 
                 var changes = new List<ComponentChange>();
                 
@@ -203,7 +218,10 @@ namespace EnhancedDynamics.Editor
                         totalProperties += change.propertyChanges.Count;
                     }
                     
-                    Debug.Log($"[EnhancedDynamics] ✓ Captured {totalProperties} property changes from {changes.Count} components to memory");
+                    if (EnhancedDynamicsSettings.DebugMode)
+                    {
+                        Debug.Log($"[EnhancedDynamics] ✓ Captured {totalProperties} property changes from {changes.Count} components to memory");
+                    }
                     return true;
                 }
                 else

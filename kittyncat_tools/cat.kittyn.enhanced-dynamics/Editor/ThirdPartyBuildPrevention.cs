@@ -23,11 +23,17 @@ namespace EnhancedDynamics.Editor
         {
             if (_isPreventingBuilds)
             {
-                Debug.Log("[EnhancedDynamics] Already preventing third-party builds");
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.Log("[EnhancedDynamics] Already preventing third-party builds");
+                }
                 return;
             }
             
-            Debug.Log("[EnhancedDynamics] Starting third-party build prevention...");
+            if (EnhancedDynamicsSettings.DebugMode)
+            {
+                Debug.Log("[EnhancedDynamics] Starting third-party build prevention...");
+            }
             
             DisableNDMFApplyOnPlay();
             DisableVRCFury();
@@ -43,7 +49,10 @@ namespace EnhancedDynamics.Editor
                 return;
             }
             
-            Debug.Log("[EnhancedDynamics] Stopping third-party build prevention...");
+            if (EnhancedDynamicsSettings.DebugMode)
+            {
+                Debug.Log("[EnhancedDynamics] Stopping third-party build prevention...");
+            }
             
             RestoreNDMFApplyOnPlay();
             RestoreVRCFury();
@@ -64,7 +73,10 @@ namespace EnhancedDynamics.Editor
                 {
                     if (assembly.GetName().Name.Contains("VRCFury"))
                     {
-                        Debug.Log($"[EnhancedDynamics] Found VRCFury assembly: {assembly.GetName().Name}");
+                        if (EnhancedDynamicsSettings.DebugMode)
+                        {
+                            Debug.Log($"[EnhancedDynamics] Found VRCFury assembly: {assembly.GetName().Name}");
+                        }
                         
                         // Look for the main build processor and PlayModeTrigger
                         foreach (var type in assembly.GetTypes())
@@ -72,12 +84,18 @@ namespace EnhancedDynamics.Editor
                             if (type.Name.Contains("VRCFuryBuilder") || type.Name.Contains("VRCFuryProcessor"))
                             {
                                 vrcFuryType = type;
-                                Debug.Log($"[EnhancedDynamics] Found VRCFury type: {type.FullName}");
+                                if (EnhancedDynamicsSettings.DebugMode)
+                                {
+                                    Debug.Log($"[EnhancedDynamics] Found VRCFury type: {type.FullName}");
+                                }
                             }
                             else if (type.Name == "PlayModeTrigger" && type.Namespace.Contains("VF"))
                             {
                                 playModeTriggerType = type;
-                                Debug.Log($"[EnhancedDynamics] Found VRCFury PlayModeTrigger: {type.FullName}");
+                                if (EnhancedDynamicsSettings.DebugMode)
+                                {
+                                    Debug.Log($"[EnhancedDynamics] Found VRCFury PlayModeTrigger: {type.FullName}");
+                                }
                             }
                         }
                     }
@@ -93,17 +111,26 @@ namespace EnhancedDynamics.Editor
                     if (enabledField != null)
                     {
                         enabledField.SetValue(null, false);
-                        Debug.Log("[EnhancedDynamics] Disabled VRCFury PlayModeTrigger via 'enabled' field");
+                        if (EnhancedDynamicsSettings.DebugMode)
+                        {
+                            Debug.Log("[EnhancedDynamics] Disabled VRCFury PlayModeTrigger via 'enabled' field");
+                        }
                     }
                     else if (disabledField != null)
                     {
                         disabledField.SetValue(null, true);
-                        Debug.Log("[EnhancedDynamics] Disabled VRCFury PlayModeTrigger via 'disabled' field");
+                        if (EnhancedDynamicsSettings.DebugMode)
+                        {
+                            Debug.Log("[EnhancedDynamics] Disabled VRCFury PlayModeTrigger via 'disabled' field");
+                        }
                     }
                     else if (initField != null)
                     {
                         initField.SetValue(null, false);
-                        Debug.Log("[EnhancedDynamics] Disabled VRCFury PlayModeTrigger via 'init' field");
+                        if (EnhancedDynamicsSettings.DebugMode)
+                        {
+                            Debug.Log("[EnhancedDynamics] Disabled VRCFury PlayModeTrigger via 'init' field");
+                        }
                     }
                 }
                 
@@ -118,19 +145,28 @@ namespace EnhancedDynamics.Editor
                     {
                         _vrcFuryOriginalState = disableField.GetValue(null);
                         disableField.SetValue(null, true);
-                        Debug.Log("[EnhancedDynamics] Disabled VRCFury via 'disabled' field");
+                        if (EnhancedDynamicsSettings.DebugMode)
+                        {
+                            Debug.Log("[EnhancedDynamics] Disabled VRCFury via 'disabled' field");
+                        }
                     }
                     else if (enabledField != null)
                     {
                         _vrcFuryOriginalState = enabledField.GetValue(null);
                         enabledField.SetValue(null, false);
-                        Debug.Log("[EnhancedDynamics] Disabled VRCFury via 'enabled' field");
+                        if (EnhancedDynamicsSettings.DebugMode)
+                        {
+                            Debug.Log("[EnhancedDynamics] Disabled VRCFury via 'enabled' field");
+                        }
                     }
                     else if (skipField != null)
                     {
                         _vrcFuryOriginalState = skipField.GetValue(null);
                         skipField.SetValue(null, true);
-                        Debug.Log("[EnhancedDynamics] Disabled VRCFury via 'skip' field");
+                        if (EnhancedDynamicsSettings.DebugMode)
+                        {
+                            Debug.Log("[EnhancedDynamics] Disabled VRCFury via 'skip' field");
+                        }
                     }
                     else
                     {
@@ -139,7 +175,10 @@ namespace EnhancedDynamics.Editor
                 }
                 else
                 {
-                    Debug.Log("[EnhancedDynamics] VRCFury not found in project");
+                    if (EnhancedDynamicsSettings.DebugMode)
+                    {
+                        Debug.Log("[EnhancedDynamics] VRCFury not found in project");
+                    }
                 }
             }
             catch (Exception e)
@@ -158,7 +197,10 @@ namespace EnhancedDynamics.Editor
                 {
                     if (assembly.GetName().Name.Contains("ModularAvatar") || assembly.GetName().Name.Contains("nadena.dev"))
                     {
-                        Debug.Log($"[EnhancedDynamics] Found Modular Avatar assembly: {assembly.GetName().Name}");
+                        if (EnhancedDynamicsSettings.DebugMode)
+                        {
+                            Debug.Log($"[EnhancedDynamics] Found Modular Avatar assembly: {assembly.GetName().Name}");
+                        }
                         
                         // Look for the main build processor
                         foreach (var type in assembly.GetTypes())
@@ -166,7 +208,10 @@ namespace EnhancedDynamics.Editor
                             if (type.Name.Contains("AvatarProcessor") || type.Name.Contains("ModularAvatarBuilder"))
                             {
                                 maType = type;
-                                Debug.Log($"[EnhancedDynamics] Found Modular Avatar type: {type.FullName}");
+                                if (EnhancedDynamicsSettings.DebugMode)
+                                {
+                                    Debug.Log($"[EnhancedDynamics] Found Modular Avatar type: {type.FullName}");
+                                }
                                 break;
                             }
                         }
@@ -183,13 +228,19 @@ namespace EnhancedDynamics.Editor
                     {
                         _modularAvatarOriginalState = disableField.GetValue(null);
                         disableField.SetValue(null, true);
-                        Debug.Log("[EnhancedDynamics] Disabled Modular Avatar via 'disabled' field");
+                        if (EnhancedDynamicsSettings.DebugMode)
+                        {
+                            Debug.Log("[EnhancedDynamics] Disabled Modular Avatar via 'disabled' field");
+                        }
                     }
                     else if (enabledField != null)
                     {
                         _modularAvatarOriginalState = enabledField.GetValue(null);
                         enabledField.SetValue(null, false);
-                        Debug.Log("[EnhancedDynamics] Disabled Modular Avatar via 'enabled' field");
+                        if (EnhancedDynamicsSettings.DebugMode)
+                        {
+                            Debug.Log("[EnhancedDynamics] Disabled Modular Avatar via 'enabled' field");
+                        }
                     }
                     else
                     {
@@ -198,7 +249,10 @@ namespace EnhancedDynamics.Editor
                 }
                 else
                 {
-                    Debug.Log("[EnhancedDynamics] Modular Avatar not found in project");
+                    if (EnhancedDynamicsSettings.DebugMode)
+                    {
+                        Debug.Log("[EnhancedDynamics] Modular Avatar not found in project");
+                    }
                 }
             }
             catch (Exception e)
@@ -229,17 +283,26 @@ namespace EnhancedDynamics.Editor
                                 if (disableField != null)
                                 {
                                     disableField.SetValue(null, _vrcFuryOriginalState);
-                                    Debug.Log("[EnhancedDynamics] Restored VRCFury 'disabled' field");
+                                    if (EnhancedDynamicsSettings.DebugMode)
+                                    {
+                                        Debug.Log("[EnhancedDynamics] Restored VRCFury 'disabled' field");
+                                    }
                                 }
                                 else if (enabledField != null)
                                 {
                                     enabledField.SetValue(null, _vrcFuryOriginalState);
-                                    Debug.Log("[EnhancedDynamics] Restored VRCFury 'enabled' field");
+                                    if (EnhancedDynamicsSettings.DebugMode)
+                                    {
+                                        Debug.Log("[EnhancedDynamics] Restored VRCFury 'enabled' field");
+                                    }
                                 }
                                 else if (skipField != null)
                                 {
                                     skipField.SetValue(null, _vrcFuryOriginalState);
-                                    Debug.Log("[EnhancedDynamics] Restored VRCFury 'skip' field");
+                                    if (EnhancedDynamicsSettings.DebugMode)
+                                    {
+                                        Debug.Log("[EnhancedDynamics] Restored VRCFury 'skip' field");
+                                    }
                                 }
                                 break;
                             }
@@ -276,12 +339,18 @@ namespace EnhancedDynamics.Editor
                                 if (disableField != null)
                                 {
                                     disableField.SetValue(null, _modularAvatarOriginalState);
-                                    Debug.Log("[EnhancedDynamics] Restored Modular Avatar 'disabled' field");
+                                    if (EnhancedDynamicsSettings.DebugMode)
+                                    {
+                                        Debug.Log("[EnhancedDynamics] Restored Modular Avatar 'disabled' field");
+                                    }
                                 }
                                 else if (enabledField != null)
                                 {
                                     enabledField.SetValue(null, _modularAvatarOriginalState);
-                                    Debug.Log("[EnhancedDynamics] Restored Modular Avatar 'enabled' field");
+                                    if (EnhancedDynamicsSettings.DebugMode)
+                                    {
+                                        Debug.Log("[EnhancedDynamics] Restored Modular Avatar 'enabled' field");
+                                    }
                                 }
                                 break;
                             }
@@ -301,7 +370,10 @@ namespace EnhancedDynamics.Editor
         {
             try
             {
-                Debug.Log("[EnhancedDynamics] Disabling NDMF ApplyOnPlay system...");
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.Log("[EnhancedDynamics] Disabling NDMF ApplyOnPlay system...");
+                }
                 
                 // Look for NDMF ApplyOnPlay
                 Type applyOnPlayType = null;
@@ -311,19 +383,28 @@ namespace EnhancedDynamics.Editor
                 {
                     if (assembly.GetName().Name.Contains("nadena.dev.ndmf"))
                     {
-                        Debug.Log($"[EnhancedDynamics] Found NDMF assembly: {assembly.GetName().Name}");
+                        if (EnhancedDynamicsSettings.DebugMode)
+                        {
+                            Debug.Log($"[EnhancedDynamics] Found NDMF assembly: {assembly.GetName().Name}");
+                        }
                         
                         foreach (var type in assembly.GetTypes())
                         {
                             if (type.Name == "ApplyOnPlay")
                             {
                                 applyOnPlayType = type;
-                                Debug.Log($"[EnhancedDynamics] Found ApplyOnPlay type: {type.FullName}");
+                                if (EnhancedDynamicsSettings.DebugMode)
+                                {
+                                    Debug.Log($"[EnhancedDynamics] Found ApplyOnPlay type: {type.FullName}");
+                                }
                             }
                             else if (type.Name == "ApplyOnPlayGlobalActivator")
                             {
                                 globalActivatorType = type;
-                                Debug.Log($"[EnhancedDynamics] Found ApplyOnPlayGlobalActivator type: {type.FullName}");
+                                if (EnhancedDynamicsSettings.DebugMode)
+                                {
+                                    Debug.Log($"[EnhancedDynamics] Found ApplyOnPlayGlobalActivator type: {type.FullName}");
+                                }
                             }
                         }
                     }
@@ -340,19 +421,28 @@ namespace EnhancedDynamics.Editor
                     {
                         _ndmfApplyOnPlayState = enabledField.GetValue(null);
                         enabledField.SetValue(null, false);
-                        Debug.Log("[EnhancedDynamics] Disabled NDMF ApplyOnPlay via 'enabled' field");
+                        if (EnhancedDynamicsSettings.DebugMode)
+                        {
+                            Debug.Log("[EnhancedDynamics] Disabled NDMF ApplyOnPlay via 'enabled' field");
+                        }
                     }
                     else if (disabledField != null)
                     {
                         _ndmfApplyOnPlayState = disabledField.GetValue(null);
                         disabledField.SetValue(null, true);
-                        Debug.Log("[EnhancedDynamics] Disabled NDMF ApplyOnPlay via 'disabled' field");
+                        if (EnhancedDynamicsSettings.DebugMode)
+                        {
+                            Debug.Log("[EnhancedDynamics] Disabled NDMF ApplyOnPlay via 'disabled' field");
+                        }
                     }
                     else if (skipField != null)
                     {
                         _ndmfApplyOnPlayState = skipField.GetValue(null);
                         skipField.SetValue(null, true);
-                        Debug.Log("[EnhancedDynamics] Disabled NDMF ApplyOnPlay via 'skipProcessing' field");
+                        if (EnhancedDynamicsSettings.DebugMode)
+                        {
+                            Debug.Log("[EnhancedDynamics] Disabled NDMF ApplyOnPlay via 'skipProcessing' field");
+                        }
                     }
                     else
                     {
@@ -370,13 +460,19 @@ namespace EnhancedDynamics.Editor
                     {
                         _ndmfGlobalActivatorState = enabledField.GetValue(null);
                         enabledField.SetValue(null, false);
-                        Debug.Log("[EnhancedDynamics] Disabled NDMF GlobalActivator via 'enabled' field");
+                        if (EnhancedDynamicsSettings.DebugMode)
+                        {
+                            Debug.Log("[EnhancedDynamics] Disabled NDMF GlobalActivator via 'enabled' field");
+                        }
                     }
                     else if (disabledField != null)
                     {
                         _ndmfGlobalActivatorState = disabledField.GetValue(null);
                         disabledField.SetValue(null, true);
-                        Debug.Log("[EnhancedDynamics] Disabled NDMF GlobalActivator via 'disabled' field");
+                        if (EnhancedDynamicsSettings.DebugMode)
+                        {
+                            Debug.Log("[EnhancedDynamics] Disabled NDMF GlobalActivator via 'disabled' field");
+                        }
                     }
                 }
             }
@@ -390,7 +486,10 @@ namespace EnhancedDynamics.Editor
         {
             try
             {
-                Debug.Log("[EnhancedDynamics] Restoring NDMF ApplyOnPlay system...");
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.Log("[EnhancedDynamics] Restoring NDMF ApplyOnPlay system...");
+                }
                 
                 // Restore ApplyOnPlay state
                 if (_ndmfApplyOnPlayState != null)
@@ -410,17 +509,26 @@ namespace EnhancedDynamics.Editor
                                     if (enabledField != null)
                                     {
                                         enabledField.SetValue(null, _ndmfApplyOnPlayState);
-                                        Debug.Log("[EnhancedDynamics] Restored NDMF ApplyOnPlay 'enabled' field");
+                                        if (EnhancedDynamicsSettings.DebugMode)
+                                        {
+                                            Debug.Log("[EnhancedDynamics] Restored NDMF ApplyOnPlay 'enabled' field");
+                                        }
                                     }
                                     else if (disabledField != null)
                                     {
                                         disabledField.SetValue(null, _ndmfApplyOnPlayState);
-                                        Debug.Log("[EnhancedDynamics] Restored NDMF ApplyOnPlay 'disabled' field");
+                                        if (EnhancedDynamicsSettings.DebugMode)
+                                        {
+                                            Debug.Log("[EnhancedDynamics] Restored NDMF ApplyOnPlay 'disabled' field");
+                                        }
                                     }
                                     else if (skipField != null)
                                     {
                                         skipField.SetValue(null, _ndmfApplyOnPlayState);
-                                        Debug.Log("[EnhancedDynamics] Restored NDMF ApplyOnPlay 'skipProcessing' field");
+                                        if (EnhancedDynamicsSettings.DebugMode)
+                                        {
+                                            Debug.Log("[EnhancedDynamics] Restored NDMF ApplyOnPlay 'skipProcessing' field");
+                                        }
                                     }
                                     break;
                                 }
@@ -446,12 +554,18 @@ namespace EnhancedDynamics.Editor
                                     if (enabledField != null)
                                     {
                                         enabledField.SetValue(null, _ndmfGlobalActivatorState);
-                                        Debug.Log("[EnhancedDynamics] Restored NDMF GlobalActivator 'enabled' field");
+                                        if (EnhancedDynamicsSettings.DebugMode)
+                                        {
+                                            Debug.Log("[EnhancedDynamics] Restored NDMF GlobalActivator 'enabled' field");
+                                        }
                                     }
                                     else if (disabledField != null)
                                     {
                                         disabledField.SetValue(null, _ndmfGlobalActivatorState);
-                                        Debug.Log("[EnhancedDynamics] Restored NDMF GlobalActivator 'disabled' field");
+                                        if (EnhancedDynamicsSettings.DebugMode)
+                                        {
+                                            Debug.Log("[EnhancedDynamics] Restored NDMF GlobalActivator 'disabled' field");
+                                        }
                                     }
                                     break;
                                 }

@@ -32,7 +32,10 @@ namespace EnhancedDynamics.Editor
             
             try
             {
-                Debug.Log("[EnhancedDynamics] Hiding all VRC avatars for physics preview...");
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.Log("[EnhancedDynamics] Hiding all VRC avatars for physics preview...");
+                }
                 
                 // Find all VRC avatars in the scene
                 var avatars = GameObject.FindObjectsOfType<VRCAvatarDescriptor>();
@@ -87,7 +90,10 @@ namespace EnhancedDynamics.Editor
                         if (avatar.gameObject.GetComponentsInChildren<VRCPhysBone>(true).Length > 0)
                         {
                             selectedAvatar = avatar.gameObject;
-                            Debug.Log($"[EnhancedDynamics] Auto-selected avatar with PhysBones: {selectedAvatar.name}");
+                            if (EnhancedDynamicsSettings.DebugMode)
+                            {
+                                Debug.Log($"[EnhancedDynamics] Auto-selected avatar with PhysBones: {selectedAvatar.name}");
+                            }
                             break;
                         }
                     }
@@ -113,7 +119,10 @@ namespace EnhancedDynamics.Editor
                     if (wasActive)
                     {
                         hiddenCount++;
-                        Debug.Log($"[EnhancedDynamics] ✓ Hidden active avatar: {rootObj.name}");
+                        if (EnhancedDynamicsSettings.DebugMode)
+                        {
+                            Debug.Log($"[EnhancedDynamics] ✓ Hidden active avatar: {rootObj.name}");
+                        }
                     }
                     else
                     {
