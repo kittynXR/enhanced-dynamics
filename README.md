@@ -2,7 +2,7 @@
 
 UI Enhancements for VRChat Dynamics (viewport handles, physics preview)
 
-![Physics Preview Screenshot](https://via.placeholder.com/800x400/2D3748/FFFFFF?text=Enhanced+Dynamics+Physics+Preview+Screenshot)
+![Enhanced Dynamics Physics Preview](./screenshots/enhanced-dynamics-hero-image.png)
 
 ## Installation
 
@@ -68,13 +68,13 @@ UI Enhancements for VRChat Dynamics (viewport handles, physics preview)
 5. Exit preview to save changes
 ```
 
-#### Adjusting PhysBone Colliders
+#### Adjusting PhysBones, PhysBone Colliders and VRC Contacts
 ```
-1. Select a PhysBoneCollider component
-2. Click "Preview Physics" button in inspector
+1. Select a PhysBone, PhysBoneCollider, or VRC Contact component
+2. Optionally click "Preview Physics" button in inspector for physics simulation
 3. Toggle viewport gizmos (radius, height, position)
-4. Drag handles to adjust collider size and position
-5. Test interaction with PhysBones in real-time
+4. Drag handles to adjust component size and position
+5. Test interaction with PhysBones in real-time (if in preview mode)
 ```
 
 #### Rapid Prototyping Workflow
@@ -108,13 +108,13 @@ UI Enhancements for VRChat Dynamics (viewport handles, physics preview)
 
 ## Screenshots
 
-![Inspector Enhancement](https://via.placeholder.com/600x400/2D3748/FFFFFF?text=Enhanced+PhysBone+Inspector+with+Preview+Button)
+![Enhanced PhysBone Inspector](./screenshots/interface/enhanced-dynamics-physbone-inspector.png)
 *Enhanced PhysBone Inspector with Preview Physics button*
 
-![Viewport Gizmos](https://via.placeholder.com/600x400/2D3748/FFFFFF?text=Viewport+Gizmos+for+PhysBone+Colliders)
+![Interactive Viewport Gizmos](./screenshots/features/enhanced-dynamics-gizmo-handles.png)
 *Interactive viewport gizmos for PhysBone colliders*
 
-![Physics Preview UI](https://via.placeholder.com/600x300/2D3748/FFFFFF?text=Physics+Preview+Floating+UI+Panel)
+![Physics Preview UI Panel](./screenshots/interface/enhanced-dynamics-preview-ui.png)
 *Floating UI panel during physics preview mode*
 
 ## Why Enhanced Dynamics?
