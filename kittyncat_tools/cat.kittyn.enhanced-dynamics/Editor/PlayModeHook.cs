@@ -165,6 +165,7 @@ namespace EnhancedDynamics.Editor
 
                         // 4. Restore GameView maximizeOnPlay state if we changed it
                         RestoreMaximizeOnPlay();
+                        
                     }
                     break;
             }

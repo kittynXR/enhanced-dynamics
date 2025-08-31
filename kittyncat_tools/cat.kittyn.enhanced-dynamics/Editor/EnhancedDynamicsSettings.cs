@@ -45,6 +45,7 @@ namespace EnhancedDynamics.Editor
             set => EditorPrefs.SetBool(USE_OVERLAY_UI_KEY, value);
         }
 
+
         
         [MenuItem("Tools/⚙️🎨 kittyn.cat 🐟/Enhanced Dynamics/🐞 Toggle Debug Logging", false, 1510)]
         private static void ToggleDebugMode()
@@ -110,6 +111,8 @@ namespace EnhancedDynamics.Editor
             Menu.SetChecked("Tools/⚙️🎨 kittyn.cat 🐟/Enhanced Dynamics/UI/Use Overlay UI", UseOverlayUI);
             return true;
         }
+
+        
 
         [MenuItem("Tools/⚙️🎨 kittyn.cat 🐟/Enhanced Dynamics/Hotkeys/Set Drop Gizmo to G", false, 1520)]
         private static void SetDropGizmoToG()

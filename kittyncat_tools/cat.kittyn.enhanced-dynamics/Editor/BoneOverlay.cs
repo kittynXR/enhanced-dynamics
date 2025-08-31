@@ -16,6 +16,8 @@ namespace EnhancedDynamics.Editor
         private static readonly List<Transform> _bones = new List<Transform>();
         private static readonly Dictionary<Transform, List<Transform>> _childMap = new Dictionary<Transform, List<Transform>>();
         private static readonly HashSet<Transform> _physBoneChain = new HashSet<Transform>();
+        private static readonly HashSet<Transform> _physBoneRoots = new HashSet<Transform>();
+        private static readonly System.Collections.Generic.Dictionary<Transform, System.Collections.Generic.List<VRC.SDK3.Dynamics.PhysBone.Components.VRCPhysBone>> _rootToPhysBones = new System.Collections.Generic.Dictionary<Transform, System.Collections.Generic.List<VRC.SDK3.Dynamics.PhysBone.Components.VRCPhysBone>>();
         private static int _lastBoneCount = 0;
 
         static BoneOverlay()
@@ -56,6 +58,8 @@ namespace EnhancedDynamics.Editor
             _bones.Clear();
             _childMap.Clear();
             _physBoneChain.Clear();
+            _physBoneRoots.Clear();
+            _rootToPhysBones.Clear();
             _lastBoneCount = 0;
 
             // Prefer bones referenced by skinned meshes for non-human rigs
@@ -95,7 +99,7 @@ namespace EnhancedDynamics.Editor
                 }
             }
 
-            // Build PhysBone chain map to make them non-grabbable (they fight with runtime simulation)
+            // Build PhysBone chain and root maps
             try
             {
                 var physBones = root.GetComponentsInChildren<VRC.SDK3.Dynamics.PhysBone.Components.VRCPhysBone>(true);
@@ -103,6 +107,13 @@ namespace EnhancedDynamics.Editor
                 {
                     var chainRoot = pb.rootTransform != null ? pb.rootTransform : pb.transform;
                     if (chainRoot == null) continue;
+                    _physBoneRoots.Add(chainRoot);
+                    if (!_rootToPhysBones.TryGetValue(chainRoot, out var list))
+                    {
+                        list = new System.Collections.Generic.List<VRC.SDK3.Dynamics.PhysBone.Components.VRCPhysBone>();
+                        _rootToPhysBones[chainRoot] = list;
+                    }
+                    list.Add(pb);
                     foreach (var t in chainRoot.GetComponentsInChildren<Transform>(true))
                     {
                         _physBoneChain.Add(t);
@@ -141,23 +152,44 @@ namespace EnhancedDynamics.Editor
                     }
                 }
 
-                // Clickable bone node (larger sphere) — non-selectable if part of PhysBone chain
-                bool inPhysBone = _physBoneChain.Contains(t);
-                float size = HandleUtility.GetHandleSize(t.position) * 0.10f;
-                var color = inPhysBone ? new Color(0.6f, 0.6f, 0.6f, 0.6f) : new Color(0.1f, 1.0f, 0.3f, 0.95f);
+                // Highlighting/selectability:
+                //  - PhysBone roots: blue, larger, selectable
+                //  - PhysBone chain (non-roots): gray, non-selectable
+                //  - Others: green, selectable
+                bool isPhysBoneRoot = _physBoneRoots.Contains(t);
+                bool inPhysBoneChain = _physBoneChain.Contains(t);
+                float baseSize = HandleUtility.GetHandleSize(t.position) * 0.10f;
+                float size = isPhysBoneRoot ? baseSize * 2.0f : baseSize;
                 var prev = Handles.color;
-                Handles.color = color;
-                if (!inPhysBone)
+
+                if (isPhysBoneRoot)
                 {
+                    Handles.color = new Color(0.2f, 0.6f, 1.0f, 0.95f);
+                    if (Handles.Button(t.position, Quaternion.identity, size, size, Handles.SphereHandleCap))
+                    {
+                        Selection.activeTransform = t;
+                        if (_rootToPhysBones.TryGetValue(t, out var pbs) && pbs.Count > 0)
+                        {
+                            EditorGUIUtility.PingObject(pbs[0]);
+                        }
+                    }
+                    var labelStyle = new GUIStyle(EditorStyles.miniBoldLabel) { normal = { textColor = new Color(0.4f, 0.75f, 1f, 0.95f) } };
+                    Handles.Label(t.position + Vector3.up * (size * 0.6f), "PB", labelStyle);
+                }
+                else if (inPhysBoneChain)
+                {
+                    // Gray non-selectable node for PB chain segments
+                    Handles.color = new Color(0.6f, 0.6f, 0.6f, 0.6f);
+                    Handles.SphereHandleCap(0, t.position, Quaternion.identity, size, EventType.Repaint);
+                }
+                else
+                {
+                    // Regular selectable bone
+                    Handles.color = new Color(0.1f, 1.0f, 0.3f, 0.95f);
                     if (Handles.Button(t.position, Quaternion.identity, size, size, Handles.SphereHandleCap))
                     {
                         Selection.activeTransform = t;
                     }
-                }
-                else
-                {
-                    // Draw as visual-only sphere (no click)
-                    Handles.SphereHandleCap(0, t.position, Quaternion.identity, size, EventType.Repaint);
                 }
                 Handles.color = prev;
             }
