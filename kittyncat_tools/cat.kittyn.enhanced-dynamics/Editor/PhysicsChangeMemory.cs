@@ -184,10 +184,20 @@ namespace EnhancedDynamics.Editor
                 return false;
             }
             
+            // Lazily capture originals if not captured yet (improves preview start time)
             if (_originalComponentSnapshots.Count == 0)
             {
-                Debug.LogWarning("[EnhancedDynamics] No original component snapshots available - was CaptureOriginalValues called?");
-                return false;
+                if (originalAvatar == null)
+                {
+                    Debug.LogWarning("[EnhancedDynamics] No original avatar provided for change comparison");
+                    return false;
+                }
+                CaptureOriginalValues(originalAvatar);
+                if (_originalComponentSnapshots.Count == 0)
+                {
+                    Debug.LogWarning("[EnhancedDynamics] Failed to capture original snapshots; aborting save");
+                    return false;
+                }
             }
             
             try

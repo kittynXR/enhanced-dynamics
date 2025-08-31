@@ -13,13 +13,20 @@ namespace EnhancedDynamics.Editor
     public static class PhysicsPreviewUI
     {
         private static bool _isUIVisible = false;
-        private static Rect _windowRect = new Rect(20, 20, 300, 150);
+        private static Rect _windowRect = new Rect(20, 20, 560, 280);
         private static GUIStyle _windowStyle = null;
         private static GUIStyle _buttonStyle = null;
         private static GUIStyle _headerStyle = null;
         private static bool _stylesInitialized = false;
         private static List<string> _cachedChangesSummary = new List<string>();
         private static bool _changesSummaryDirty = true;
+        private static bool _isResizing = false;
+        private static Vector2 _resizeStartMouse;
+        private static Rect _resizeStartRect;
+        private const float RESIZE_HANDLE_SIZE = 16f;
+        private const float MIN_WINDOW_W = 420f;
+        private const float MIN_WINDOW_H = 220f;
+        private static bool _capturingHotkey = false;
         
         // Performance optimization: Frame rate throttling
         private static int _frameCounter = 0;
@@ -114,7 +121,28 @@ namespace EnhancedDynamics.Editor
         
         private static void OnSceneGUI(SceneView sceneView)
         {
-            if (!_isUIVisible || !PlayModeHook.IsInPhysicsPreview)
+            // Shortcut callback support: perform deferred drop if requested
+            if (AvatarGizmoHandler.ConsumeDropUnderMouseRequest() && PlayModeHook.IsInAnyPreview)
+            {
+                AvatarGizmoHandler.DropAnchorUnderMouse(sceneView, Event.current.mousePosition);
+            }
+
+            // Global hotkey: Drop gizmo under mouse (configurable) & capture custom hotkey
+            var ev = Event.current;
+            if (_capturingHotkey && ev.type == EventType.KeyDown)
+            {
+                EnhancedDynamicsSettings.DropGizmoKey = ev.keyCode;
+                _capturingHotkey = false;
+                sceneView.ShowNotification(new GUIContent($"Drop hotkey set to {ev.keyCode}"), 1.5);
+                ev.Use();
+            }
+            if (PlayModeHook.IsInAnyPreview && ev.type == EventType.KeyDown && ev.keyCode == EnhancedDynamicsSettings.DropGizmoKey)
+            {
+                AvatarGizmoHandler.DropAnchorUnderMouse(sceneView, ev.mousePosition);
+                ev.Use();
+            }
+
+            if (!_isUIVisible || !PlayModeHook.IsInAnyPreview)
             {
                 return;
             }
@@ -169,6 +197,32 @@ namespace EnhancedDynamics.Editor
                     _windowRect.y = Mathf.Clamp(_windowRect.y, 0, sceneRect.height - _windowRect.height);
                     _windowPositionCached = true;
                 }
+
+                // Draw resize handle (bottom-right)
+                var resizeRect = new Rect(_windowRect.xMax - RESIZE_HANDLE_SIZE, _windowRect.yMax - RESIZE_HANDLE_SIZE, RESIZE_HANDLE_SIZE, RESIZE_HANDLE_SIZE);
+                EditorGUIUtility.AddCursorRect(resizeRect, MouseCursor.ResizeUpLeft);
+                GUI.Box(resizeRect, "");
+
+                var e = Event.current;
+                if (e.type == EventType.MouseDown && resizeRect.Contains(e.mousePosition))
+                {
+                    _isResizing = true;
+                    _resizeStartMouse = e.mousePosition;
+                    _resizeStartRect = _windowRect;
+                    e.Use();
+                }
+                if (e.type == EventType.MouseDrag && _isResizing)
+                {
+                    var delta = e.mousePosition - _resizeStartMouse;
+                    _windowRect.width = Mathf.Max(MIN_WINDOW_W, _resizeStartRect.width + delta.x);
+                    _windowRect.height = Mathf.Max(MIN_WINDOW_H, _resizeStartRect.height + delta.y);
+                    e.Use();
+                }
+                if (e.type == EventType.MouseUp && _isResizing)
+                {
+                    _isResizing = false;
+                    e.Use();
+                }
             }
             catch (Exception e)
             {
@@ -184,33 +238,35 @@ namespace EnhancedDynamics.Editor
         {
             GUILayout.BeginVertical();
             
-            // Move to Left checkbox at the top
-            var newMoveToLeft = GUILayout.Toggle(_moveToLeft, "Move to Left");
-            if (newMoveToLeft != _moveToLeft)
+            // Header drag bar area
+            var dragRect = EditorGUILayout.GetControlRect(false, 22);
+            EditorGUI.LabelField(dragRect, "Physics Preview", _headerStyle);
+            // Grip lines (visual cue)
+            var gripColor = EditorGUIUtility.isProSkin ? new Color(1f, 1f, 1f, 0.25f) : new Color(0f, 0f, 0f, 0.35f);
+            float gx = dragRect.width - 22f;
+            EditorGUI.DrawRect(new Rect(gx, dragRect.y + 7f, 14f, 1f), gripColor);
+            EditorGUI.DrawRect(new Rect(gx, dragRect.y + 11f, 14f, 1f), gripColor);
+            EditorGUIUtility.AddCursorRect(dragRect, MouseCursor.MoveArrow);
+            GUI.DragWindow(dragRect);
+            
+            GUILayout.Space(3);
+            
+            // Header with status + actions
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Physics Preview Active", _headerStyle);
+            GUILayout.FlexibleSpace();
+            if (GUILayout.Button("Reset Panel", EditorStyles.miniButton, GUILayout.Height(20)))
             {
-                _moveToLeft = newMoveToLeft;
-                _windowPositionCached = false; // Trigger position recalculation
-                
-                // Immediately update position
-                var sceneView = SceneView.lastActiveSceneView;
-                if (sceneView != null)
+                var sv = SceneView.lastActiveSceneView;
+                if (sv != null)
                 {
-                    var sceneViewPosition = sceneView.position;
-                    if (_moveToLeft)
-                    {
-                        _windowRect.x = 10;
-                    }
-                    else
-                    {
-                        _windowRect.x = sceneViewPosition.width - _windowRect.width - 10;
-                    }
+                    var svp = sv.position;
+                    _windowRect = new Rect(10, 10, 560, 280);
+                    _windowRect.x = Mathf.Clamp(_windowRect.x, 0, svp.width - _windowRect.width);
+                    _windowRect.y = Mathf.Clamp(_windowRect.y, 0, svp.height - _windowRect.height);
                 }
             }
-            
-            GUILayout.Space(5);
-            
-            // Header with status
-            GUILayout.Label("Physics Preview Active", _headerStyle);
+            GUILayout.EndHorizontal();
             
             GUILayout.Space(10);
             
@@ -218,13 +274,53 @@ namespace EnhancedDynamics.Editor
             DrawChangesSummary();
             
             GUILayout.Space(10);
+
+            // Show Bones toggle
+            var showBones = EnhancedDynamicsSettings.ShowBones;
+            var newShowBones = GUILayout.Toggle(showBones, "Show Bones");
+            if (newShowBones != showBones)
+            {
+                EnhancedDynamicsSettings.ShowBones = newShowBones;
+                SceneView.RepaintAll();
+            }
+            
+            GUILayout.Space(6);
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Re-center Gizmo", _buttonStyle, GUILayout.Height(24)))
+            {
+                var sv = SceneView.lastActiveSceneView;
+                if (sv != null) AvatarGizmoHandler.RecenterToCamera(sv);
+            }
+            if (GUILayout.Button($"Drop Gizmo Under Mouse ({EnhancedDynamicsSettings.DropGizmoKey})", _buttonStyle, GUILayout.Height(24)))
+            {
+                var sv = SceneView.lastActiveSceneView;
+                if (sv != null) AvatarGizmoHandler.DropAnchorUnderMouse(sv, Event.current.mousePosition);
+            }
+            if (GUILayout.Button(_capturingHotkey ? "Press any key…" : "Set Drop Hotkey…", _buttonStyle, GUILayout.Height(24)))
+            {
+                _capturingHotkey = !_capturingHotkey;
+            }
+            GUILayout.EndHorizontal();
+
+            GUILayout.Label($"Hotkey: {EnhancedDynamicsSettings.DropGizmoKey} — Drop gizmo under mouse (Edit > Shortcuts)", EditorStyles.miniLabel);
+
+            // Quick size preset (Medium) only
+            GUILayout.Space(4);
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Size:", GUILayout.Width(32));
+            if (GUILayout.Button("M", EditorStyles.miniButton, GUILayout.Width(24))) { _windowRect.width = 560; _windowRect.height = 280; }
+            GUILayout.FlexibleSpace();
+            GUILayout.EndHorizontal();
+
+            GUILayout.Space(6);
             
             // Control buttons
             DrawControlButtons();
             
             GUILayout.EndVertical();
             
-            // Make window draggable
+            // Make window draggable via header area (and fallback to whole window)
+            GUI.DragWindow(new Rect(0, 0, Mathf.Max(200f, _windowRect.width), 26));
             GUI.DragWindow();
         }
         
@@ -270,6 +366,15 @@ namespace EnhancedDynamics.Editor
             
             GUI.backgroundColor = originalColor;
             
+            // Save + Exit button
+            GUI.backgroundColor = new Color(0.6f, 0.9f, 0.6f);
+            if (GUILayout.Button("Save + Exit", _buttonStyle, GUILayout.Height(30)))
+            {
+                SaveChanges();
+                ExitPreview();
+            }
+            GUI.backgroundColor = originalColor;
+
             // Exit Preview button
             GUI.backgroundColor = new Color(1f, 0.7f, 0.7f);
             if (GUILayout.Button("Exit Preview", _buttonStyle, GUILayout.Height(30)))
@@ -298,15 +403,29 @@ namespace EnhancedDynamics.Editor
                 
                 if (originalAvatar == null || physicsClone == null)
                 {
-                    Debug.LogError("[EnhancedDynamics] Missing avatar references for save");
-                    Debug.LogError($"  Original Avatar: {originalAvatar}");
-                    Debug.LogError($"  Physics Clone: {physicsClone}");
-                    var sceneView = SceneView.lastActiveSceneView;
-                    if (sceneView != null)
+                    if (EnhancedDynamicsSettings.FastPreview)
                     {
-                        sceneView.ShowNotification(new GUIContent("Error: Missing avatar references"), 2.0);
+                        // In fast preview we don't clone—saving is not supported (would require separate snapshot path)
+                        var sv = SceneView.lastActiveSceneView;
+                        if (sv != null)
+                        {
+                            sv.ShowNotification(new GUIContent("Save not available in Fast Preview"), 2.0);
+                        }
+                        Debug.LogWarning("[EnhancedDynamics] Save not available in Fast Scene Preview (no clone). Use Safe Preview.");
+                        return;
                     }
-                    return;
+                    else
+                    {
+                        Debug.LogError("[EnhancedDynamics] Missing avatar references for save");
+                        Debug.LogError($"  Original Avatar: {originalAvatar}");
+                        Debug.LogError($"  Physics Clone: {physicsClone}");
+                        var sceneView = SceneView.lastActiveSceneView;
+                        if (sceneView != null)
+                        {
+                            sceneView.ShowNotification(new GUIContent("Error: Missing avatar references"), 2.0);
+                        }
+                        return;
+                    }
                 }
                 
                 Debug.Log($"[EnhancedDynamics] Original Avatar: {originalAvatar.name}");
@@ -374,10 +493,10 @@ namespace EnhancedDynamics.Editor
             try
             {
                 // Window style
+                var bg = EditorGUIUtility.isProSkin ? new Color(0.15f, 0.15f, 0.15f, 0.98f) : new Color(0.86f, 0.86f, 0.86f, 0.98f);
                 _windowStyle = new GUIStyle(GUI.skin.window)
                 {
-                    normal = { background = MakeTexture(2, 2, new Color(0.2f, 0.2f, 0.2f, 0.95f)) },
-                    border = new RectOffset(8, 8, 8, 8),
+                    normal = { background = MakeTexture(8, 8, bg) },
                     padding = new RectOffset(8, 8, 8, 8)
                 };
                 
@@ -391,7 +510,7 @@ namespace EnhancedDynamics.Editor
                 // Header style
                 _headerStyle = new GUIStyle(EditorStyles.boldLabel)
                 {
-                    alignment = TextAnchor.MiddleCenter,
+                    alignment = TextAnchor.MiddleLeft,
                     normal = { textColor = Color.white }
                 };
                 

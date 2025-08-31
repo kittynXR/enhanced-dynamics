@@ -14,6 +14,8 @@ namespace EnhancedDynamics.Editor
         private static Vector3 _avatarCenter = Vector3.zero;
         private static bool _avatarCenterCached = false;
         private static bool _avatarCenterLogged = false;
+        private static bool _manualAnchorSet = false;
+        private static Vector3 _manualAnchor = Vector3.zero;
         
         /// <summary>
         /// Enable or disable the avatar translation gizmo
@@ -29,7 +31,7 @@ namespace EnhancedDynamics.Editor
         /// </summary>
         public static void DrawAvatarGizmo()
         {
-            if (!_gizmoEnabled || !PlayModeHook.IsInPhysicsPreview)
+            if (!_gizmoEnabled || !PlayModeHook.IsInAnyPreview)
             {
                 return;
             }
@@ -37,22 +39,28 @@ namespace EnhancedDynamics.Editor
             var physicsClone = AvatarHiding.PhysicsClone;
             if (physicsClone == null)
             {
-                return;
+                // In fast preview there is no clone; target the selected avatar if available
+                var root = PhysicsContextTracker.OriginalAvatar ?? (Selection.activeGameObject != null ? FindAvatarRoot(Selection.activeGameObject) : null);
+                if (root == null) return;
+                physicsClone = root;
             }
             
             try
             {
+                // Always show avatar-level gizmo so it can be grabbed at any time
                 
-                // Calculate avatar center if not cached
-                if (!_avatarCenterCached)
+                // Calculate avatar gizmo anchor
+                if (_manualAnchorSet)
                 {
-                    _avatarCenter = CalculateAvatarCenter(physicsClone);
-                    _avatarCenterCached = true;
-                    
-                    // Only log once per session, and only in debug mode
-                    if (!_avatarCenterLogged)
+                    _avatarCenter = _manualAnchor;
+                }
+                else
+                {
+                    if (!_avatarCenterCached)
                     {
-                        if (EnhancedDynamicsSettings.DebugMode)
+                        _avatarCenter = CalculateAvatarCenter(physicsClone);
+                        _avatarCenterCached = true;
+                        if (!_avatarCenterLogged && EnhancedDynamicsSettings.DebugMode)
                         {
                             Debug.Log($"[EnhancedDynamics] Avatar center calculated: {_avatarCenter}");
                         }
@@ -60,19 +68,14 @@ namespace EnhancedDynamics.Editor
                     }
                 }
                 
-                // Get current avatar rotation
-                var avatarRotation = physicsClone.transform.rotation;
-                
-                // Draw combined translation and rotation handles
+                // Draw both translation and rotation handles so users can always grab either
                 EditorGUI.BeginChangeCheck();
                 
                 // Use a good handle size for visibility
                 var handleSize = HandleUtility.GetHandleSize(_avatarCenter) * 0.4f;
                 
-                // Draw translation handle
-                var newCenter = Handles.PositionHandle(_avatarCenter, avatarRotation);
-                
-                // Draw rotation handle at the same position
+                var avatarRotation = physicsClone.transform.rotation;
+                Vector3 newCenter = Handles.PositionHandle(_avatarCenter, avatarRotation);
                 var newRotation = Handles.RotationHandle(avatarRotation, _avatarCenter);
                 
                 if (EditorGUI.EndChangeCheck())
@@ -83,12 +86,20 @@ namespace EnhancedDynamics.Editor
                         var offset = newCenter - _avatarCenter;
                         ApplyAvatarTranslation(physicsClone, offset);
                         _avatarCenter = newCenter;
+                        _manualAnchorSet = true;
+                        _manualAnchor = _avatarCenter;
                     }
                     
                     // Apply rotation if changed
                     if (newRotation != avatarRotation)
                     {
-                        ApplyAvatarRotation(physicsClone, newRotation);
+                        var delta = newRotation * Quaternion.Inverse(avatarRotation);
+                        var t = physicsClone.transform;
+                        var newPos = _avatarCenter + delta * (t.position - _avatarCenter);
+                        var newRot = delta * avatarRotation;
+                        t.SetPositionAndRotation(newPos, newRot);
+                        _manualAnchorSet = true;
+                        _manualAnchor = _avatarCenter;
                     }
                     
                     // Mark scene as dirty
@@ -111,7 +122,10 @@ namespace EnhancedDynamics.Editor
         {
             _avatarCenterCached = false;
             _avatarCenterLogged = false;
-            _avatarCenter = Vector3.zero;
+            if (!_manualAnchorSet)
+            {
+                _avatarCenter = Vector3.zero;
+            }
         }
         
         private static Vector3 CalculateAvatarCenter(GameObject avatar)
@@ -221,6 +235,54 @@ namespace EnhancedDynamics.Editor
                 return avatar.transform.position;
             }
         }
+
+        private static Vector3 CalculateAutoPlacedAnchor(GameObject avatar)
+        {
+            // Place a handle near the avatar center but offset toward the SceneView camera
+            try
+            {
+                var center = CalculateAvatarCenter(avatar);
+                var renderers = avatar.GetComponentsInChildren<Renderer>();
+                var extents = Vector3.one * 0.5f;
+                if (renderers.Length > 0)
+                {
+                    var bounds = renderers[0].bounds;
+                    for (int i = 1; i < renderers.Length; i++) bounds.Encapsulate(renderers[i].bounds);
+                    extents = bounds.extents;
+                    center = bounds.center;
+                }
+
+                var sv = SceneView.lastActiveSceneView;
+                if (sv != null && sv.camera != null)
+                {
+                    var cam = sv.camera;
+                    var forward = cam.transform.forward;
+                    var up = cam.transform.up;
+                    // Offset in front of the avatar and slightly upward for visibility
+                    float r = extents.magnitude;
+                    var pos = center + forward * (r * 0.6f) + up * (r * 0.2f);
+                    return pos;
+                }
+
+                return center;
+            }
+            catch
+            {
+                return avatar.transform.position;
+            }
+        }
+
+        private static GameObject FindAvatarRoot(GameObject obj)
+        {
+            var t = obj.transform;
+            while (t != null)
+            {
+                var desc = t.GetComponent<VRC.SDK3.Avatars.Components.VRCAvatarDescriptor>();
+                if (desc != null) return t.gameObject;
+                t = t.parent;
+            }
+            return null;
+        }
         
         private static GameObject FindBoneByName(GameObject avatar, string[] boneNames)
         {
@@ -281,6 +343,22 @@ namespace EnhancedDynamics.Editor
                 Debug.LogError($"[EnhancedDynamics] Error applying avatar rotation: {e}");
             }
         }
+
+        private static void ApplyAvatarRotationAroundPivot(GameObject avatar, Quaternion newRotation, Vector3 pivot)
+        {
+            try
+            {
+                var oldRotation = avatar.transform.rotation;
+                var delta = newRotation * Quaternion.Inverse(oldRotation);
+                var pos = avatar.transform.position;
+                var newPos = pivot + delta * (pos - pivot);
+                avatar.transform.SetPositionAndRotation(newPos, newRotation);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[EnhancedDynamics] Error rotating avatar around pivot: {e}");
+            }
+        }
         
         private static void DrawAvatarCenterIndicator(Vector3 center, float handleSize)
         {
@@ -305,6 +383,84 @@ namespace EnhancedDynamics.Editor
             {
                 Debug.LogWarning($"[EnhancedDynamics] Error drawing avatar center indicator: {e}");
             }
+        }
+
+        public static void ClearManualAnchor()
+        {
+            _manualAnchorSet = false;
+            _avatarCenterCached = false;
+        }
+
+        public static void RecenterToCamera(SceneView sv)
+        {
+            try
+            {
+                var root = AvatarHiding.PhysicsClone ?? (Selection.activeGameObject != null ? FindAvatarRoot(Selection.activeGameObject) : null);
+                if (root == null) return;
+                var anchor = CalculateAutoPlacedAnchor(root);
+                SetManualAnchor(anchor);
+                
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[EnhancedDynamics] Failed to recenter to camera: {e}");
+            }
+        }
+
+        public static void DropAnchorUnderMouse(SceneView sv, Vector2 guiMousePosition)
+        {
+            try
+            {
+                var root = AvatarHiding.PhysicsClone ?? (Selection.activeGameObject != null ? FindAvatarRoot(Selection.activeGameObject) : null);
+                if (root == null || sv == null) return;
+                var ray = HandleUtility.GUIPointToWorldRay(guiMousePosition);
+
+                // Always place pivot on a plane through avatar center (free space), not on colliders
+                var center = CalculateAvatarCenter(root);
+                var renderers = root.GetComponentsInChildren<Renderer>();
+                var bounds = new Bounds(center, Vector3.one);
+                if (renderers.Length > 0)
+                {
+                    bounds = renderers[0].bounds;
+                    for (int i = 1; i < renderers.Length; i++) bounds.Encapsulate(renderers[i].bounds);
+                    center = bounds.center;
+                }
+                var plane = new Plane(sv.camera.transform.forward, center);
+                Vector3 pos = center;
+                if (plane.Raycast(ray, out float d))
+                {
+                    pos = ray.origin + ray.direction * d;
+                }
+                // No forward offset; keep pivot exactly on plane
+                SetManualAnchor(pos);
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[EnhancedDynamics] Failed dropping anchor under mouse: {e}");
+            }
+        }
+
+        private static void SetManualAnchor(Vector3 pos)
+        {
+            _manualAnchorSet = true;
+            _manualAnchor = pos;
+            _avatarCenter = pos;
+        }
+
+        // Shortcut integration: request a drop under mouse to be executed on next Scene GUI event
+        private static bool _requestDropUnderMouse;
+        public static void RequestDropUnderMouse()
+        {
+            _requestDropUnderMouse = true;
+        }
+        public static bool ConsumeDropUnderMouseRequest()
+        {
+            if (_requestDropUnderMouse)
+            {
+                _requestDropUnderMouse = false;
+                return true;
+            }
+            return false;
         }
     }
 }

@@ -36,7 +36,21 @@ namespace EnhancedDynamics.Editor
             Debug.LogError("[EnhancedDynamics] Error test message");
         }
         
-        public static bool IsPreviewActive => PlayModeHook.IsInPhysicsPreview;
+        public static bool IsPreviewActive => PlayModeHook.IsInAnyPreview;
+
+        // Quick toggle with F7
+        [MenuItem("Tools/⚙️🎨 kittyn.cat 🐟/Enhanced Dynamics/🐟 Toggle Physics Preview _F7", false, 1499)]
+        public static void TogglePhysicsPreview()
+        {
+            if (IsPreviewActive)
+            {
+                StopPreview();
+            }
+            else
+            {
+                StartPreview();
+            }
+        }
         
         public static void StartPreview()
         {

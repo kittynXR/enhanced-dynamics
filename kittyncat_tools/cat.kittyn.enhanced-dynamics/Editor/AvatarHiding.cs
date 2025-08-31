@@ -102,11 +102,10 @@ namespace EnhancedDynamics.Editor
                     }
                 }
                 
-                // CRITICAL: Capture original values BEFORE hiding any avatars
+                // Store reference to original; capture snapshots lazily on save to speed up preview start
                 if (selectedAvatar != null)
                 {
-                    _originalAvatarForClone = selectedAvatar; // Store reference to original
-                    PhysicsChangeMemory.CaptureOriginalValues(selectedAvatar);
+                    _originalAvatarForClone = selectedAvatar;
                 }
                 
                 // Now hide all avatars
@@ -331,8 +330,12 @@ namespace EnhancedDynamics.Editor
             // IMPORTANT: Keep the exact same name to ensure path matching works
             _physicsClone.name = originalAvatar.name;
             
-            // Clean the clone to remove non-physics components
-            CleanPhysicsClone(_physicsClone);
+            // Fast preview: skip expensive cleaning step to reduce startup latency
+            // (ThirdPartyBuildPrevention already disables common builders on play.)
+            // If needed, we can reintroduce targeted cleanup later.
+
+            // Ensure physics components have distinct IDs to avoid conflicts
+            ResetPhysicsComponentIds(_physicsClone);
             
             // Make sure the clone is active
             _physicsClone.SetActive(true);
