@@ -127,6 +127,23 @@ namespace EnhancedDynamics.Editor
                 _avatarCenter = Vector3.zero;
             }
         }
+
+        // Set the gizmo anchor to the avatar center offset to the avatar's right by the given meters
+        public static void SetAnchorToRightOfCenter(float offsetMeters = 0.1f)
+        {
+            try
+            {
+                var root = AvatarHiding.PhysicsClone ?? (Selection.activeGameObject != null ? FindAvatarRoot(Selection.activeGameObject) : null);
+                if (root == null) return;
+                var center = CalculateAvatarCenter(root);
+                var pos = center + (root.transform.right * offsetMeters);
+                SetManualAnchor(pos);
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[EnhancedDynamics] Failed to set default anchor offset: {e}");
+            }
+        }
         
         private static Vector3 CalculateAvatarCenter(GameObject avatar)
         {
@@ -440,7 +457,7 @@ namespace EnhancedDynamics.Editor
             }
         }
 
-        private static void SetManualAnchor(Vector3 pos)
+        public static void SetManualAnchor(Vector3 pos)
         {
             _manualAnchorSet = true;
             _manualAnchor = pos;

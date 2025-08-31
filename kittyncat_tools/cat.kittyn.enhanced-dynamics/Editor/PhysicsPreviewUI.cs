@@ -63,9 +63,11 @@ namespace EnhancedDynamics.Editor
             _changesSummaryDirty = true; // Mark for update
             _windowPositionCached = false; // Reset position cache
             _frameCounter = 0; // Reset frame counter
-            
+
             // Reset avatar gizmo cache
             AvatarGizmoHandler.ResetCache();
+            // Place the avatar gizmo slightly to the right of avatar center by default
+            AvatarGizmoHandler.SetAnchorToRightOfCenter(0.1f);
             
             // Check if we have pending changes from a previous session
             if (PhysicsChangeMemory.HasPendingChanges)
@@ -324,11 +326,6 @@ namespace EnhancedDynamics.Editor
             GUILayout.Label($"Hotkey: {EnhancedDynamicsSettings.DropGizmoKey} — Drop gizmo under mouse (Edit > Shortcuts)", EditorStyles.miniLabel);
 
             GUILayout.Space(4);
-            GUILayout.BeginHorizontal();
-            GUILayout.Label("Size:", GUILayout.Width(32));
-            if (GUILayout.Button("M", EditorStyles.miniButton, GUILayout.Width(24))) { _windowRect.width = 280; _windowRect.height = 315; }
-            GUILayout.FlexibleSpace();
-            GUILayout.EndHorizontal();
 
             GUILayout.Space(6);
             DrawControlButtons();
