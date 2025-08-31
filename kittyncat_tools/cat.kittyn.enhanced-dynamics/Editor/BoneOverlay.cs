@@ -18,7 +18,9 @@ namespace EnhancedDynamics.Editor
         private static readonly HashSet<Transform> _physBoneChain = new HashSet<Transform>();
         private static readonly HashSet<Transform> _physBoneRoots = new HashSet<Transform>();
         private static readonly System.Collections.Generic.Dictionary<Transform, System.Collections.Generic.List<VRC.SDK3.Dynamics.PhysBone.Components.VRCPhysBone>> _rootToPhysBones = new System.Collections.Generic.Dictionary<Transform, System.Collections.Generic.List<VRC.SDK3.Dynamics.PhysBone.Components.VRCPhysBone>>();
+        private static readonly HashSet<Transform> _hiddenPhysBoneChain = new HashSet<Transform>();
         private static int _lastBoneCount = 0;
+        private static int _lastEnabledPhysBoneCount = -1;
 
         static BoneOverlay()
         {
@@ -35,10 +37,20 @@ namespace EnhancedDynamics.Editor
                 var root = GetActiveAvatarRoot();
                 if (root == null) return;
 
-                if (root != _currentAvatarRoot)
+                // Rebuild if avatar changed or enabled PB count changed
+                int currentEnabledPbCount = 0;
+                try
+                {
+                    var pbs = root.GetComponentsInChildren<VRC.SDK3.Dynamics.PhysBone.Components.VRCPhysBone>(true);
+                    foreach (var pb in pbs) if (pb != null && pb.isActiveAndEnabled) currentEnabledPbCount++;
+                }
+                catch { }
+
+                if (root != _currentAvatarRoot || currentEnabledPbCount != _lastEnabledPhysBoneCount || _bones.Count == 0)
                 {
                     BuildBoneCache(root);
                     _currentAvatarRoot = root;
+                    _lastEnabledPhysBoneCount = currentEnabledPbCount;
                 }
 
                 DrawBones();
@@ -60,6 +72,7 @@ namespace EnhancedDynamics.Editor
             _physBoneChain.Clear();
             _physBoneRoots.Clear();
             _rootToPhysBones.Clear();
+            _hiddenPhysBoneChain.Clear();
             _lastBoneCount = 0;
 
             // Prefer bones referenced by skinned meshes for non-human rigs
@@ -86,6 +99,59 @@ namespace EnhancedDynamics.Editor
                 }
             }
 
+            // (moved: copy to _bones and build child map after PhysBone visibility filtering)
+
+            // Build PhysBone chain and root maps
+            try
+            {
+                var physBones = root.GetComponentsInChildren<VRC.SDK3.Dynamics.PhysBone.Components.VRCPhysBone>(true);
+                foreach (var pb in physBones)
+                {
+                    var chainRoot = pb.rootTransform != null ? pb.rootTransform : pb.transform;
+                    if (chainRoot == null) continue;
+
+                    // Consider only the component's enabled flag for preview visibility
+                    bool isEnabled = pb != null && pb.enabled;
+                    if (isEnabled)
+                    {
+                        _physBoneRoots.Add(chainRoot);
+                        if (!_rootToPhysBones.TryGetValue(chainRoot, out var list))
+                        {
+                            list = new System.Collections.Generic.List<VRC.SDK3.Dynamics.PhysBone.Components.VRCPhysBone>();
+                            _rootToPhysBones[chainRoot] = list;
+                        }
+                        list.Add(pb);
+                        // Ensure PB root is visible/selectable even if not part of SMR bones
+                        boneSet.Add(chainRoot);
+                        foreach (var t in chainRoot.GetComponentsInChildren<Transform>(true))
+                        {
+                            _physBoneChain.Add(t);
+                        }
+                    }
+                    else
+                    {
+                        // Disabled PB chain: collect to hide from overlay
+                        foreach (var t in chainRoot.GetComponentsInChildren<Transform>(true))
+                        {
+                            _hiddenPhysBoneChain.Add(t);
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.LogWarning($"[EnhancedDynamics] Could not build PhysBone chain map: {e}");
+                }
+            }
+
+            // Remove disabled PhysBone chains from visibility, then rebuild child map on filtered set
+            if (_hiddenPhysBoneChain.Count > 0)
+            {
+                boneSet.ExceptWith(_hiddenPhysBoneChain);
+            }
+
             _bones.AddRange(boneSet);
             foreach (var t in _bones)
             {
@@ -96,35 +162,6 @@ namespace EnhancedDynamics.Editor
                 if (t.parent != null && boneSet.Contains(t.parent))
                 {
                     _childMap[t.parent].Add(t);
-                }
-            }
-
-            // Build PhysBone chain and root maps
-            try
-            {
-                var physBones = root.GetComponentsInChildren<VRC.SDK3.Dynamics.PhysBone.Components.VRCPhysBone>(true);
-                foreach (var pb in physBones)
-                {
-                    var chainRoot = pb.rootTransform != null ? pb.rootTransform : pb.transform;
-                    if (chainRoot == null) continue;
-                    _physBoneRoots.Add(chainRoot);
-                    if (!_rootToPhysBones.TryGetValue(chainRoot, out var list))
-                    {
-                        list = new System.Collections.Generic.List<VRC.SDK3.Dynamics.PhysBone.Components.VRCPhysBone>();
-                        _rootToPhysBones[chainRoot] = list;
-                    }
-                    list.Add(pb);
-                    foreach (var t in chainRoot.GetComponentsInChildren<Transform>(true))
-                    {
-                        _physBoneChain.Add(t);
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                if (EnhancedDynamicsSettings.DebugMode)
-                {
-                    Debug.LogWarning($"[EnhancedDynamics] Could not build PhysBone chain map: {e}");
                 }
             }
 
@@ -167,11 +204,10 @@ namespace EnhancedDynamics.Editor
                     Handles.color = new Color(0.2f, 0.6f, 1.0f, 0.95f);
                     if (Handles.Button(t.position, Quaternion.identity, size, size, Handles.SphereHandleCap))
                     {
-                        Selection.activeTransform = t;
-                        if (_rootToPhysBones.TryGetValue(t, out var pbs) && pbs.Count > 0)
-                        {
-                            EditorGUIUtility.PingObject(pbs[0]);
-                        }
+                        // Set selection on delay to avoid being overridden by other handlers
+                        VRC.SDK3.Dynamics.PhysBone.Components.VRCPhysBone pingTarget = null;
+                        if (_rootToPhysBones.TryGetValue(t, out var pbs) && pbs.Count > 0) pingTarget = pbs[0];
+                        SetSelectionDelayed(t, pingTarget);
                     }
                     var labelStyle = new GUIStyle(EditorStyles.miniBoldLabel) { normal = { textColor = new Color(0.4f, 0.75f, 1f, 0.95f) } };
                     Handles.Label(t.position + Vector3.up * (size * 0.6f), "PB", labelStyle);
@@ -184,11 +220,11 @@ namespace EnhancedDynamics.Editor
                 }
                 else
                 {
-                    // Regular selectable bone
+                    // Regular selectable bone (not in any enabled PhysBone chain)
                     Handles.color = new Color(0.1f, 1.0f, 0.3f, 0.95f);
                     if (Handles.Button(t.position, Quaternion.identity, size, size, Handles.SphereHandleCap))
                     {
-                        Selection.activeTransform = t;
+                        SetSelectionDelayed(t, null);
                     }
                 }
                 Handles.color = prev;
@@ -207,6 +243,71 @@ namespace EnhancedDynamics.Editor
             float ringSize = HandleUtility.GetHandleSize(selected.position) * 0.12f;
             Handles.DrawWireDisc(selected.position, SceneView.lastActiveSceneView != null ? SceneView.lastActiveSceneView.camera.transform.forward : Vector3.forward, ringSize);
             Handles.color = prev;
+        }
+
+        private static int _selectionGuardFrames;
+        private static Transform _pendingSelection;
+        private static UnityEngine.Object _pendingSelectObject;
+        private static UnityEngine.Object _pendingPing;
+        private static void SetSelectionDelayed(Transform t, Component compToSelect)
+        {
+            try
+            {
+                EditorApplication.delayCall += () =>
+                {
+                    if (t == null) return;
+                    _pendingSelection = t;
+                    _pendingSelectObject = (UnityEngine.Object)compToSelect ?? (UnityEngine.Object)t.gameObject;
+                    _pendingPing = (UnityEngine.Object)compToSelect ?? (UnityEngine.Object)t.gameObject;
+                    _selectionGuardFrames = 12;
+                    EditorApplication.update -= SelectionGuardUpdate;
+                    EditorApplication.update += SelectionGuardUpdate;
+                };
+            }
+            catch (Exception e)
+            {
+                if (EnhancedDynamicsSettings.DebugMode)
+                {
+                    Debug.LogWarning($"[EnhancedDynamics] SetSelectionDelayed error: {e}");
+                }
+            }
+        }
+
+        private static void SelectionGuardUpdate()
+        {
+            if (_selectionGuardFrames <= 0)
+            {
+                EditorApplication.update -= SelectionGuardUpdate;
+                _pendingSelection = null;
+                _pendingSelectObject = null;
+                _pendingPing = null;
+                return;
+            }
+            _selectionGuardFrames--;
+            try
+            {
+                if (_pendingSelection != null)
+                {
+                    if (_pendingSelectObject != null && Selection.activeObject != _pendingSelectObject)
+                    {
+                        Selection.activeObject = _pendingSelectObject;
+                    }
+                    if (Selection.activeGameObject != _pendingSelection.gameObject)
+                    {
+                        Selection.activeGameObject = _pendingSelection.gameObject;
+                    }
+                    if (_pendingSelectObject != null)
+                    {
+                        Selection.objects = new UnityEngine.Object[] { _pendingSelectObject };
+                    }
+                    else
+                    {
+                        Selection.objects = new UnityEngine.Object[] { _pendingSelection.gameObject };
+                    }
+                    EditorGUIUtility.PingObject(_pendingPing ?? (UnityEngine.Object)_pendingSelection.gameObject);
+                }
+            }
+            catch { }
         }
 
         private static GameObject GetActiveAvatarRoot()

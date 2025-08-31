@@ -415,18 +415,22 @@ namespace EnhancedDynamics.Editor
                 var physBones = clone.GetComponentsInChildren<VRCPhysBone>(true);
                 foreach (var physBone in physBones)
                 {
-                    // Force Unity to regenerate the component's internal ID
+                    // Force Unity to regenerate the component's internal ID, preserving original state
+                    bool wasEnabled = physBone.enabled;
                     physBone.enabled = false;
                     physBone.enabled = true;
+                    physBone.enabled = wasEnabled;
                 }
                 
                 // Get all PhysBoneCollider components in the clone
                 var physBoneColliders = clone.GetComponentsInChildren<VRCPhysBoneCollider>(true);
                 foreach (var collider in physBoneColliders)
                 {
-                    // Force Unity to regenerate the component's internal ID
+                    // Force Unity to regenerate the component's internal ID, preserving original state
+                    bool wasEnabled = collider.enabled;
                     collider.enabled = false;
                     collider.enabled = true;
+                    collider.enabled = wasEnabled;
                 }
                 
                 if (EnhancedDynamicsSettings.DebugMode)
