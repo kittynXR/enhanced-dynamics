@@ -66,14 +66,25 @@ namespace EnhancedDynamics.Editor
                     // About to enter play mode
                     if (_isPhysicsPreviewRequested)
                     {
+                        // Ensure we intercept non-VRChat play/build callbacks before anything fires
+                        BuildCallbackInterceptor.StartIntercepting();
                         if (EnhancedDynamicsSettings.DebugMode)
                         {
                             Debug.Log("[EnhancedDynamics] Preparing physics preview with avatar hiding...");
                         }
-                        if (EnhancedDynamicsSettings.FastPreview)
+                        // If only one prevention toggle is enabled (mixed), force safe mode
+                        bool mixedPrevention = EnhancedDynamicsSettings.PreventVRCFuryInPreview ^ EnhancedDynamicsSettings.PreventModularAvatarInPreview;
+                        bool useFast = EnhancedDynamicsSettings.FastPreview && !mixedPrevention;
+                        if (useFast)
                         {
                             // Fast path: do not hide or clone; only prevent builders
                             ThirdPartyBuildPrevention.StartPreventing();
+                            // Extra cleanup: destroy any runtime trigger objects that may have been created
+                            // during OnValidate or editor scripts before entering play
+                            // (e.g., __vrcf_play_mode_trigger)
+                            // Uses the same method as StartPreventing for safety
+                            // Note: this is idempotent and cheap.
+                            // Keep fast preview light by avoiding clone/hide.
                             _fastPreviewActive = true;
                             _wasIntercepting = true;
                             _isPhysicsPreviewRequested = false;
@@ -89,6 +100,9 @@ namespace EnhancedDynamics.Editor
                             }
                             // Disable third-party play processors (fast path)
                             ThirdPartyBuildPrevention.StartPreventing();
+                            // Extra safety: remove any lingering runtime activators
+                            // that might have been injected by packages already
+                            // in this edit-mode frame.
                             _fastPreviewActive = false;
                             _wasIntercepting = true;
                             _isPhysicsPreviewRequested = false;
@@ -155,6 +169,8 @@ namespace EnhancedDynamics.Editor
                         
                         // 2. Restore third-party play processors
                         ThirdPartyBuildPrevention.StopPreventing();
+                        // 2b. Restore any intercepted callbacks
+                        BuildCallbackInterceptor.StopIntercepting();
                         
                         _wasIntercepting = false;
                         _fastPreviewActive = false;

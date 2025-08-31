@@ -290,6 +290,21 @@ namespace EnhancedDynamics.Editor
                 SceneView.RepaintAll();
             }
 
+            // Build prevention toggles
+            GUILayout.Space(6);
+            var preventVrcf = EnhancedDynamicsSettings.PreventVRCFuryInPreview;
+            var newPreventVrcf = GUILayout.Toggle(preventVrcf, "Prevent VRCFury builds in preview");
+            if (newPreventVrcf != preventVrcf)
+            {
+                EnhancedDynamicsSettings.PreventVRCFuryInPreview = newPreventVrcf;
+            }
+            var preventMa = EnhancedDynamicsSettings.PreventModularAvatarInPreview;
+            var newPreventMa = GUILayout.Toggle(preventMa, "Prevent MA builds in preview");
+            if (newPreventMa != preventMa)
+            {
+                EnhancedDynamicsSettings.PreventModularAvatarInPreview = newPreventMa;
+            }
+
             GUILayout.Space(6);
             if (GUILayout.Button("Re-center Gizmo", _buttonStyle, GUILayout.Height(18)))
             {

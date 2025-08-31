@@ -32,7 +32,8 @@ namespace EnhancedDynamics.Editor
         private static List<IPreprocessBuildWithReport> _removedPreprocessCallbacks = new List<IPreprocessBuildWithReport>();
         private static List<IPostprocessBuildWithReport> _removedPostprocessCallbacks = new List<IPostprocessBuildWithReport>();
         private static List<IProcessSceneWithReport> _removedSceneCallbacks = new List<IProcessSceneWithReport>();
-        private static Dictionary<MethodInfo, Delegate> _removedInitializeCallbacks = new Dictionary<MethodInfo, Delegate>();
+        // Store removed EditorApplication delegates by event name so we can restore properly
+        private static readonly Dictionary<string, List<Delegate>> _removedEditorEventDelegates = new Dictionary<string, List<Delegate>>();
         
         private static bool _isIntercepting = false;
         
@@ -58,7 +59,12 @@ namespace EnhancedDynamics.Editor
             try
             {
                 InterceptBuildProcessors();
-                InterceptInitializeOnLoadMethods();
+                // Strip disallowed EditorApplication subscribers (common for ApplyOnPlay triggers)
+                InterceptEditorEvent("playModeStateChanged");
+                InterceptEditorEvent("update");
+                InterceptEditorEvent("delayCall");
+                InterceptEditorEvent("projectChanged");
+                InterceptEditorEvent("hierarchyChanged");
                 
                 _isIntercepting = true;
                 if (EnhancedDynamicsSettings.DebugMode)
@@ -97,7 +103,12 @@ namespace EnhancedDynamics.Editor
             try
             {
                 RestoreBuildProcessors();
-                RestoreInitializeOnLoadMethods();
+                // Restore EditorApplication subscribers that we stripped
+                RestoreEditorEvent("playModeStateChanged");
+                RestoreEditorEvent("update");
+                RestoreEditorEvent("delayCall");
+                RestoreEditorEvent("projectChanged");
+                RestoreEditorEvent("hierarchyChanged");
                 
                 _isIntercepting = false;
                 if (EnhancedDynamicsSettings.DebugMode)
@@ -265,32 +276,50 @@ namespace EnhancedDynamics.Editor
             }
         }
         
-        private static void InterceptInitializeOnLoadMethods()
+        private static void InterceptEditorEvent(string fieldName)
         {
-            // This is more complex as InitializeOnLoadMethod callbacks are stored differently
-            // They're typically executed through EditorApplication delegates
-            
-            // Intercept EditorApplication.playModeStateChanged if needed
-            var delegateField = typeof(EditorApplication).GetField("playModeStateChanged", BindingFlags.Static | BindingFlags.NonPublic);
-            if (delegateField != null)
+            try
             {
-                var currentDelegate = delegateField.GetValue(null) as Delegate;
-                if (currentDelegate != null)
+                var field = typeof(EditorApplication).GetField(fieldName, BindingFlags.Static | BindingFlags.NonPublic);
+                if (field == null)
                 {
-                    var invocationList = currentDelegate.GetInvocationList();
-                    foreach (var d in invocationList)
+                    if (EnhancedDynamicsSettings.DebugMode)
                     {
-                        if (!IsAllowedCallback(d.Target))
+                        Debug.Log($"[EnhancedDynamics] Could not find EditorApplication event field '{fieldName}'");
+                    }
+                    return;
+                }
+                var current = field.GetValue(null) as Delegate;
+                if (current == null) return;
+
+                var removed = new List<Delegate>();
+                Delegate kept = null;
+                foreach (var d in current.GetInvocationList())
+                {
+                    if (IsAllowedEditorDelegate(d))
+                    {
+                        kept = kept == null ? d : Delegate.Combine(kept, d);
+                    }
+                    else
+                    {
+                        removed.Add(d);
+                        if (EnhancedDynamicsSettings.DebugMode)
                         {
-                            EditorApplication.playModeStateChanged -= (Action<PlayModeStateChange>)d;
-                            _removedInitializeCallbacks[d.Method] = d;
-                            if (EnhancedDynamicsSettings.DebugMode)
-                            {
-                                Debug.Log($"[EnhancedDynamics] Removed playModeStateChanged callback: {d.Method.DeclaringType?.FullName}.{d.Method.Name}");
-                            }
+                            var decl = d.Method.DeclaringType;
+                            Debug.Log($"[EnhancedDynamics] Stripping {fieldName} subscriber: {decl?.FullName}.{d.Method.Name} from {decl?.Assembly.GetName().Name}");
                         }
                     }
                 }
+                field.SetValue(null, kept);
+
+                if (removed.Count > 0)
+                {
+                    _removedEditorEventDelegates[fieldName] = removed;
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[EnhancedDynamics] Error intercepting EditorApplication.{fieldName}: {e}");
             }
         }
         
@@ -344,44 +373,82 @@ namespace EnhancedDynamics.Editor
             }
         }
         
-        private static void RestoreInitializeOnLoadMethods()
+        private static void RestoreEditorEvent(string fieldName)
         {
-            // Restore removed playModeStateChanged callbacks
-            foreach (var kvp in _removedInitializeCallbacks)
+            try
             {
-                EditorApplication.playModeStateChanged += (Action<PlayModeStateChange>)kvp.Value;
-                if (EnhancedDynamicsSettings.DebugMode)
+                if (!_removedEditorEventDelegates.TryGetValue(fieldName, out var removed)) return;
+
+                var field = typeof(EditorApplication).GetField(fieldName, BindingFlags.Static | BindingFlags.NonPublic);
+                if (field == null) return;
+
+                var current = field.GetValue(null) as Delegate;
+                foreach (var d in removed)
                 {
-                    Debug.Log($"[EnhancedDynamics] Restored playModeStateChanged callback: {kvp.Key.DeclaringType?.FullName}.{kvp.Key.Name}");
+                    current = current == null ? d : Delegate.Combine(current, d);
+                    if (EnhancedDynamicsSettings.DebugMode)
+                    {
+                        var decl = d.Method.DeclaringType;
+                        Debug.Log($"[EnhancedDynamics] Restored {fieldName} subscriber: {decl?.FullName}.{d.Method.Name}");
+                    }
                 }
+                field.SetValue(null, current);
+                _removedEditorEventDelegates.Remove(fieldName);
             }
-            
-            _removedInitializeCallbacks.Clear();
+            catch (Exception e)
+            {
+                Debug.LogError($"[EnhancedDynamics] Error restoring EditorApplication.{fieldName}: {e}");
+            }
         }
         
         private static bool IsAllowedCallback(object callback)
         {
-            if (callback == null)
-                return true; // Allow null callbacks
-            
+            if (callback == null) return false; // Null target typically indicates static method; decide via method-based path elsewhere
             var type = callback.GetType();
-            var namespaceName = type.Namespace ?? "";
-            var assemblyName = type.Assembly.GetName().Name;
-            
-            // Check if namespace or assembly is whitelisted
-            bool isAllowed = AllowedNamespaces.Any(allowed => 
-                namespaceName.StartsWith(allowed) || 
-                assemblyName.StartsWith(allowed));
-            
+            return IsAllowedType(type);
+        }
+
+        private static bool IsAllowedEditorDelegate(Delegate d)
+        {
+            // Prefer method/declaring type for robust filtering (handles static handlers)
+            var method = d?.Method;
+            return IsAllowedMethod(method);
+        }
+
+        private static bool IsAllowedType(Type type)
+        {
+            if (type == null) return false;
+            var ns = type.Namespace ?? "";
+            var an = type.Assembly.GetName().Name;
+            bool isAllowed = AllowedNamespaces.Any(allowed => ns.StartsWith(allowed) || an.StartsWith(allowed));
+
+            // Dynamically allowlists based on user settings
             if (!isAllowed)
             {
-                if (EnhancedDynamicsSettings.DebugMode)
+                // If VRCFury prevention is OFF, allow VF/com.vrcfury assemblies
+                if (!EnhancedDynamicsSettings.PreventVRCFuryInPreview)
                 {
-                    Debug.Log($"[EnhancedDynamics] Blocking callback: {type.FullName} (Namespace: {namespaceName}, Assembly: {assemblyName})");
+                    if (ns.StartsWith("VF.") || an.Contains("VRCFury") || an.Contains("com.vrcfury"))
+                        isAllowed = true;
+                }
+                // If Modular Avatar prevention is OFF, allow nadena.dev.ndmf + modular_avatar
+                if (!EnhancedDynamicsSettings.PreventModularAvatarInPreview)
+                {
+                    if (ns.StartsWith("nadena.dev.ndmf") || ns.StartsWith("nadena.dev.modular_avatar") || an.Contains("ModularAvatar"))
+                        isAllowed = true;
                 }
             }
-            
+            if (!isAllowed && EnhancedDynamicsSettings.DebugMode)
+            {
+                Debug.Log($"[EnhancedDynamics] Blocking callback type: {type.FullName} (Namespace: {ns}, Assembly: {an})");
+            }
             return isAllowed;
+        }
+
+        private static bool IsAllowedMethod(MethodInfo method)
+        {
+            var declType = method?.DeclaringType;
+            return IsAllowedType(declType);
         }
     }
 }

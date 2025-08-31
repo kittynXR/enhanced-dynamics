@@ -18,6 +18,17 @@ namespace EnhancedDynamics.Editor
         private static object _modularAvatarOriginalState = null;
         private static object _ndmfApplyOnPlayState = null;
         private static object _ndmfGlobalActivatorState = null;
+
+        // Brute-force backup of static fields (bools/delegates) we flip off
+        private static readonly System.Collections.Generic.Dictionary<FieldInfo, object> _savedStaticFields = new System.Collections.Generic.Dictionary<FieldInfo, object>();
+        private static readonly string[] TargetAssemblyNameFragments = new[]
+        {
+            "nadena.dev.ndmf",
+            "nadena.dev.modular_avatar",
+            "ModularAvatar",
+            "VRCFury",
+            "com.vrcfury"
+        };
         
         public static void StartPreventing()
         {
@@ -35,9 +46,17 @@ namespace EnhancedDynamics.Editor
                 Debug.Log("[EnhancedDynamics] Starting third-party build prevention...");
             }
             
-            DisableNDMFApplyOnPlay();
-            DisableVRCFury();
-            DisableModularAvatar();
+            if (EnhancedDynamicsSettings.PreventModularAvatarInPreview)
+            {
+                DisableNDMFApplyOnPlay();
+                DisableModularAvatar();
+            }
+            if (EnhancedDynamicsSettings.PreventVRCFuryInPreview)
+            {
+                DisableVRCFury();
+            }
+            BruteForceDisableAssemblies();
+            DestroyKnownRuntimeTriggerObjects();
             
             _isPreventingBuilds = true;
         }
@@ -54,11 +73,154 @@ namespace EnhancedDynamics.Editor
                 Debug.Log("[EnhancedDynamics] Stopping third-party build prevention...");
             }
             
-            RestoreNDMFApplyOnPlay();
-            RestoreVRCFury();
-            RestoreModularAvatar();
+            if (EnhancedDynamicsSettings.PreventModularAvatarInPreview)
+            {
+                RestoreNDMFApplyOnPlay();
+                RestoreModularAvatar();
+            }
+            if (EnhancedDynamicsSettings.PreventVRCFuryInPreview)
+            {
+                RestoreVRCFury();
+            }
+            RestoreBruteForcedFields();
             
             _isPreventingBuilds = false;
+        }
+
+        private static void BruteForceDisableAssemblies()
+        {
+            try
+            {
+                // Build dynamic target assembly list based on settings
+                var fragments = new System.Collections.Generic.List<string>();
+                if (EnhancedDynamicsSettings.PreventModularAvatarInPreview)
+                {
+                    fragments.Add("nadena.dev.ndmf");
+                    fragments.Add("nadena.dev.modular_avatar");
+                    fragments.Add("ModularAvatar");
+                }
+                if (EnhancedDynamicsSettings.PreventVRCFuryInPreview)
+                {
+                    fragments.Add("VRCFury");
+                    fragments.Add("com.vrcfury");
+                }
+
+                foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    var an = asm.GetName().Name;
+                    bool target = fragments.Exists(f => an.Contains(f));
+                    if (!target) continue;
+
+                    foreach (var type in asm.GetTypes())
+                    {
+                        foreach (var field in type.GetFields(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
+                        {
+                            try
+                            {
+                                // Skip readonly fields
+                                if (field.IsInitOnly) continue;
+                                var ft = field.FieldType;
+                                if (ft == typeof(bool))
+                                {
+                                    // Save original
+                                    if (!_savedStaticFields.ContainsKey(field))
+                                        _savedStaticFields[field] = field.GetValue(null);
+
+                                    var name = field.Name.ToLowerInvariant();
+                                    // If field sounds like a disable flag, set true; otherwise set false
+                                    bool newVal = name.Contains("disable") || name.Contains("disabled");
+                                    field.SetValue(null, newVal);
+                                    if (EnhancedDynamicsSettings.DebugMode)
+                                    {
+                                        Debug.Log($"[EnhancedDynamics] Brute-force set {type.FullName}.{field.Name} = {newVal}");
+                                    }
+                                }
+                                else if (typeof(Delegate).IsAssignableFrom(ft))
+                                {
+                                    // Nuke static delegate subscribers
+                                    var current = field.GetValue(null);
+                                    if (current != null)
+                                    {
+                                        if (!_savedStaticFields.ContainsKey(field))
+                                            _savedStaticFields[field] = current;
+                                        field.SetValue(null, null);
+                                        if (EnhancedDynamicsSettings.DebugMode)
+                                        {
+                                            Debug.Log($"[EnhancedDynamics] Cleared delegate {type.FullName}.{field.Name}");
+                                        }
+                                    }
+                                }
+                            }
+                            catch { }
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[EnhancedDynamics] Error in BruteForceDisableAssemblies: {e}");
+            }
+        }
+
+        private static void RestoreBruteForcedFields()
+        {
+            foreach (var kvp in _savedStaticFields)
+            {
+                try
+                {
+                    kvp.Key.SetValue(null, kvp.Value);
+                    if (EnhancedDynamicsSettings.DebugMode)
+                    {
+                        Debug.Log($"[EnhancedDynamics] Restored {kvp.Key.DeclaringType?.FullName}.{kvp.Key.Name}");
+                    }
+                }
+                catch { }
+            }
+            _savedStaticFields.Clear();
+        }
+
+        private static void DestroyKnownRuntimeTriggerObjects()
+        {
+            try
+            {
+                // Destroy VRCFury play mode trigger object if present
+                if (EnhancedDynamicsSettings.PreventVRCFuryInPreview)
+                {
+                    var vrcfObj = GameObject.Find("__vrcf_play_mode_trigger");
+                    if (vrcfObj != null)
+                    {
+                        GameObject.DestroyImmediate(vrcfObj);
+                        if (EnhancedDynamicsSettings.DebugMode)
+                        {
+                            Debug.Log("[EnhancedDynamics] Destroyed __vrcf_play_mode_trigger object");
+                        }
+                    }
+                }
+
+                // Remove any NDMF GlobalActivator/AvatarActivator runtime components already present in scene
+                if (EnhancedDynamicsSettings.PreventModularAvatarInPreview)
+                {
+                    var behaviours = GameObject.FindObjectsOfType<MonoBehaviour>(true);
+                    foreach (var mb in behaviours)
+                    {
+                        if (mb == null) continue;
+                        var tn = mb.GetType().FullName ?? string.Empty;
+                        if (tn == "nadena.dev.ndmf.runtime.ApplyOnPlayGlobalActivator" ||
+                            tn == "nadena.dev.ndmf.runtime.AvatarActivator")
+                        {
+                            GameObject.DestroyImmediate(mb);
+                            if (EnhancedDynamicsSettings.DebugMode)
+                            {
+                                Debug.Log($"[EnhancedDynamics] Removed runtime activator: {tn}");
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[EnhancedDynamics] Error destroying runtime triggers: {e}");
+            }
         }
         
         private static void DisableVRCFury()

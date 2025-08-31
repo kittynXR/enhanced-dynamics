@@ -38,6 +38,15 @@ namespace EnhancedDynamics.Editor
             togglesRow.Add(showBones);
             root.Add(togglesRow);
 
+            // Build prevention toggles
+            var preventVrcf = new Toggle("Prevent VRCFury builds in preview") { value = EnhancedDynamicsSettings.PreventVRCFuryInPreview };
+            preventVrcf.RegisterValueChangedCallback(e => { EnhancedDynamicsSettings.PreventVRCFuryInPreview = e.newValue; });
+            root.Add(preventVrcf);
+
+            var preventMa = new Toggle("Prevent MA builds in preview") { value = EnhancedDynamicsSettings.PreventModularAvatarInPreview };
+            preventMa.RegisterValueChangedCallback(e => { EnhancedDynamicsSettings.PreventModularAvatarInPreview = e.newValue; });
+            root.Add(preventMa);
+
             // Row: gizmo actions
             var gizmoRow = new VisualElement { style = { flexDirection = FlexDirection.Row } };
             var recenterBtn = new Button(() =>

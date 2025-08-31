@@ -13,6 +13,8 @@ namespace EnhancedDynamics.Editor
         private const string SHOW_BONES_KEY = "EnhancedDynamics.ShowBones";
         private const string DROP_GIZMO_KEY_KEY = "EnhancedDynamics.DropGizmoKey";
         private const string USE_OVERLAY_UI_KEY = "EnhancedDynamics.UseOverlayUI";
+        private const string PREVENT_VRCFURY_KEY = "EnhancedDynamics.PreventVRCFuryInPreview";
+        private const string PREVENT_MA_KEY = "EnhancedDynamics.PreventModularAvatarInPreview";
         
         public static bool DebugMode
         {
@@ -43,6 +45,20 @@ namespace EnhancedDynamics.Editor
         {
             get => EditorPrefs.GetBool(USE_OVERLAY_UI_KEY, false);
             set => EditorPrefs.SetBool(USE_OVERLAY_UI_KEY, value);
+        }
+
+        // Build prevention toggles
+        // Defaults: VRCFury prevention ON, Modular Avatar prevention OFF
+        public static bool PreventVRCFuryInPreview
+        {
+            get => EditorPrefs.GetBool(PREVENT_VRCFURY_KEY, true);
+            set => EditorPrefs.SetBool(PREVENT_VRCFURY_KEY, value);
+        }
+
+        public static bool PreventModularAvatarInPreview
+        {
+            get => EditorPrefs.GetBool(PREVENT_MA_KEY, false);
+            set => EditorPrefs.SetBool(PREVENT_MA_KEY, value);
         }
 
 
@@ -133,6 +149,35 @@ namespace EnhancedDynamics.Editor
         {
             DropGizmoKey = KeyCode.J;
             SceneView.RepaintAll();
+        }
+
+        // Build prevention menu toggles
+        [MenuItem("Tools/⚙️🎨 kittyn.cat 🐟/Enhanced Dynamics/Build Prevention/Prevent VRCFury builds in preview", false, 1530)]
+        private static void TogglePreventVRCFury()
+        {
+            PreventVRCFuryInPreview = !PreventVRCFuryInPreview;
+            Debug.Log($"[EnhancedDynamics] Prevent VRCFury in preview: {PreventVRCFuryInPreview}");
+        }
+
+        [MenuItem("Tools/⚙️🎨 kittyn.cat 🐟/Enhanced Dynamics/Build Prevention/Prevent VRCFury builds in preview", true)]
+        private static bool TogglePreventVRCFuryValidate()
+        {
+            Menu.SetChecked("Tools/⚙️🎨 kittyn.cat 🐟/Enhanced Dynamics/Build Prevention/Prevent VRCFury builds in preview", PreventVRCFuryInPreview);
+            return true;
+        }
+
+        [MenuItem("Tools/⚙️🎨 kittyn.cat 🐟/Enhanced Dynamics/Build Prevention/Prevent MA builds in preview", false, 1531)]
+        private static void TogglePreventMA()
+        {
+            PreventModularAvatarInPreview = !PreventModularAvatarInPreview;
+            Debug.Log($"[EnhancedDynamics] Prevent Modular Avatar in preview: {PreventModularAvatarInPreview}");
+        }
+
+        [MenuItem("Tools/⚙️🎨 kittyn.cat 🐟/Enhanced Dynamics/Build Prevention/Prevent MA builds in preview", true)]
+        private static bool TogglePreventMAValidate()
+        {
+            Menu.SetChecked("Tools/⚙️🎨 kittyn.cat 🐟/Enhanced Dynamics/Build Prevention/Prevent MA builds in preview", PreventModularAvatarInPreview);
+            return true;
         }
     }
 }

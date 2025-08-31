@@ -87,6 +87,9 @@ namespace EnhancedDynamics.Editor
                     return;
                 }
                 
+                // Proactively intercept non-VRChat callbacks before any playmode transition
+                BuildCallbackInterceptor.StartIntercepting();
+
                 // Set fast play mode options BEFORE entering play mode
                 var originalEnterPlayModeOptions = EditorSettings.enterPlayModeOptions;
                 var originalEnterPlayModeEnabled = EditorSettings.enterPlayModeOptionsEnabled;

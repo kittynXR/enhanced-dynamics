@@ -330,9 +330,8 @@ namespace EnhancedDynamics.Editor
             // IMPORTANT: Keep the exact same name to ensure path matching works
             _physicsClone.name = originalAvatar.name;
             
-            // Fast preview: skip expensive cleaning step to reduce startup latency
-            // (ThirdPartyBuildPrevention already disables common builders on play.)
-            // If needed, we can reintroduce targeted cleanup later.
+            // Clean the clone of build-triggering components and AvatarDescriptor to prevent pipelines
+            CleanPhysicsClone(_physicsClone);
 
             // Ensure physics components have distinct IDs to avoid conflicts
             ResetPhysicsComponentIds(_physicsClone);
@@ -375,6 +374,12 @@ namespace EnhancedDynamics.Editor
                     GameObject.DestroyImmediate(component);
                     removedCount++;
                 }
+                else if (componentType == typeof(VRCAvatarDescriptor) && EnhancedDynamicsSettings.PreventModularAvatarInPreview)
+                {
+                    // Explicitly remove AvatarDescriptor so VRChat/NDMF/VRCF build hooks ignore the clone
+                    GameObject.DestroyImmediate(component);
+                    removedCount++;
+                }
             }
             
             // Fix VRChat physics system duplicate shape errors
@@ -396,8 +401,7 @@ namespace EnhancedDynamics.Editor
                    componentType == typeof(SkinnedMeshRenderer) ||
                    componentType == typeof(MeshRenderer) ||
                    componentType == typeof(MeshFilter) ||
-                   componentType == typeof(Animator) ||
-                   componentType == typeof(VRCAvatarDescriptor);
+                   componentType == typeof(Animator);
         }
         
         /// <summary>
@@ -442,19 +446,26 @@ namespace EnhancedDynamics.Editor
             var namespaceName = componentType.Namespace ?? "";
             
             // Remove VRCFury components
-            if (namespaceName.StartsWith("VF.") || typeName.Contains("VRCFury"))
+            if (EnhancedDynamicsSettings.PreventVRCFuryInPreview && (namespaceName.StartsWith("VF.") || typeName.Contains("VRCFury")))
             {
                 return true;
             }
             
             // Remove Modular Avatar components  
-            if (namespaceName.StartsWith("nadena.dev.modular_avatar") || 
+            if (EnhancedDynamicsSettings.PreventModularAvatarInPreview && (
+                namespaceName.StartsWith("nadena.dev.modular_avatar") || 
                 namespaceName.StartsWith("nadena.dev.ndmf") ||
-                typeName.Contains("ModularAvatar"))
+                typeName.Contains("ModularAvatar")))
             {
                 return true;
             }
             
+            // Remove VRChat pipeline manager and related build pipeline components
+            if (EnhancedDynamicsSettings.PreventModularAvatarInPreview && (typeName.Contains("PipelineManager") || namespaceName.StartsWith("VRC.Core")))
+            {
+                return true;
+            }
+
             // Remove other known build-triggering components
             if (typeName.Contains("Prefabulous") ||
                 typeName.Contains("Vixen") ||
