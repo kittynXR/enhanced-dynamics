@@ -13,7 +13,7 @@ namespace EnhancedDynamics.Editor
     public static class PhysicsPreviewUI
     {
         private static bool _isUIVisible = false;
-        private static Rect _windowRect = new Rect(20, 20, 560, 280);
+        private static Rect _windowRect = new Rect(20, 20, 280, 315);
         private static GUIStyle _windowStyle = null;
         private static GUIStyle _buttonStyle = null;
         private static GUIStyle _headerStyle = null;
@@ -24,9 +24,12 @@ namespace EnhancedDynamics.Editor
         private static Vector2 _resizeStartMouse;
         private static Rect _resizeStartRect;
         private const float RESIZE_HANDLE_SIZE = 16f;
-        private const float MIN_WINDOW_W = 420f;
-        private const float MIN_WINDOW_H = 220f;
+        private const float MIN_WINDOW_W = 280f;
+        private const float MIN_WINDOW_H = 240f;
         private static bool _capturingHotkey = false;
+        private static bool _draggingHeader = false;
+        private static Vector2 _dragStartMouse;
+        private static Rect _dragStartRect;
         
         // Performance optimization: Frame rate throttling
         private static int _frameCounter = 0;
@@ -186,8 +189,10 @@ namespace EnhancedDynamics.Editor
             
             try
             {
-                // Make the window draggable
-                _windowRect = GUI.Window(12345, _windowRect, DrawPhysicsPreviewWindow, "Physics Preview", _windowStyle);
+                // Draw as a grouped panel and handle dragging manually for reliability
+                GUI.BeginGroup(_windowRect, GUIContent.none, _windowStyle);
+                DrawPhysicsPreviewWindow(0);
+                GUI.EndGroup();
                 
                 // Cache window position calculations to reduce overhead
                 if (!_windowPositionCached || shouldUpdate)
@@ -238,44 +243,45 @@ namespace EnhancedDynamics.Editor
         {
             GUILayout.BeginVertical();
             
-            // Header drag bar area
-            var dragRect = EditorGUILayout.GetControlRect(false, 22);
-            EditorGUI.LabelField(dragRect, "Physics Preview", _headerStyle);
-            // Grip lines (visual cue)
+            // Header drag bar area (immediate mode, absolute in window space)
+            var headerRect = new Rect(0, 0, _windowRect.width, 22);
+            GUI.Label(headerRect, "Physics Preview", _headerStyle);
             var gripColor = EditorGUIUtility.isProSkin ? new Color(1f, 1f, 1f, 0.25f) : new Color(0f, 0f, 0f, 0.35f);
-            float gx = dragRect.width - 22f;
-            EditorGUI.DrawRect(new Rect(gx, dragRect.y + 7f, 14f, 1f), gripColor);
-            EditorGUI.DrawRect(new Rect(gx, dragRect.y + 11f, 14f, 1f), gripColor);
-            EditorGUIUtility.AddCursorRect(dragRect, MouseCursor.MoveArrow);
-            GUI.DragWindow(dragRect);
-            
-            GUILayout.Space(3);
-            
-            // Header with status + actions
-            GUILayout.BeginHorizontal();
-            GUILayout.Label("Physics Preview Active", _headerStyle);
-            GUILayout.FlexibleSpace();
-            if (GUILayout.Button("Reset Panel", EditorStyles.miniButton, GUILayout.Height(20)))
+            float gx = headerRect.width - 22f;
+            EditorGUI.DrawRect(new Rect(gx, 7f, 14f, 1f), gripColor);
+            EditorGUI.DrawRect(new Rect(gx, 11f, 14f, 1f), gripColor);
+            EditorGUIUtility.AddCursorRect(headerRect, MouseCursor.MoveArrow);
+            // Manual drag
+            var e = Event.current;
+            if (e.type == EventType.MouseDown && headerRect.Contains(e.mousePosition))
             {
-                var sv = SceneView.lastActiveSceneView;
-                if (sv != null)
-                {
-                    var svp = sv.position;
-                    _windowRect = new Rect(10, 10, 560, 280);
-                    _windowRect.x = Mathf.Clamp(_windowRect.x, 0, svp.width - _windowRect.width);
-                    _windowRect.y = Mathf.Clamp(_windowRect.y, 0, svp.height - _windowRect.height);
-                }
+                _draggingHeader = true;
+                _dragStartMouse = GUIUtility.GUIToScreenPoint(e.mousePosition);
+                _dragStartRect = _windowRect;
+                e.Use();
             }
-            GUILayout.EndHorizontal();
-            
+            if (e.type == EventType.MouseDrag && _draggingHeader)
+            {
+                var currentScreen = GUIUtility.GUIToScreenPoint(e.mousePosition);
+                var delta = currentScreen - _dragStartMouse;
+                _windowRect.x = _dragStartRect.x + delta.x;
+                _windowRect.y = _dragStartRect.y + delta.y;
+                e.Use();
+            }
+            if (e.type == EventType.MouseUp && _draggingHeader)
+            {
+                _draggingHeader = false;
+                e.Use();
+            }
+            // Layout area for content
+            GUILayout.BeginArea(new Rect(0, 22, _windowRect.width, _windowRect.height - 22));
+            GUILayout.BeginVertical();
+
+            GUILayout.Label("Physics Preview Active", _headerStyle);
             GUILayout.Space(10);
-            
-            // Changes summary
             DrawChangesSummary();
-            
             GUILayout.Space(10);
 
-            // Show Bones toggle
             var showBones = EnhancedDynamicsSettings.ShowBones;
             var newShowBones = GUILayout.Toggle(showBones, "Show Bones");
             if (newShowBones != showBones)
@@ -283,45 +289,39 @@ namespace EnhancedDynamics.Editor
                 EnhancedDynamicsSettings.ShowBones = newShowBones;
                 SceneView.RepaintAll();
             }
-            
+
             GUILayout.Space(6);
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Re-center Gizmo", _buttonStyle, GUILayout.Height(24)))
+            if (GUILayout.Button("Re-center Gizmo", _buttonStyle, GUILayout.Height(18)))
             {
                 var sv = SceneView.lastActiveSceneView;
                 if (sv != null) AvatarGizmoHandler.RecenterToCamera(sv);
             }
-            if (GUILayout.Button($"Drop Gizmo Under Mouse ({EnhancedDynamicsSettings.DropGizmoKey})", _buttonStyle, GUILayout.Height(24)))
+            if (GUILayout.Button($"Drop Gizmo Under Mouse ({EnhancedDynamicsSettings.DropGizmoKey})", _buttonStyle, GUILayout.Height(18)))
             {
                 var sv = SceneView.lastActiveSceneView;
                 if (sv != null) AvatarGizmoHandler.DropAnchorUnderMouse(sv, Event.current.mousePosition);
             }
-            if (GUILayout.Button(_capturingHotkey ? "Press any key…" : "Set Drop Hotkey…", _buttonStyle, GUILayout.Height(24)))
+            if (GUILayout.Button(_capturingHotkey ? "Press any key…" : "Set Drop Hotkey…", _buttonStyle, GUILayout.Height(18)))
             {
                 _capturingHotkey = !_capturingHotkey;
             }
-            GUILayout.EndHorizontal();
 
             GUILayout.Label($"Hotkey: {EnhancedDynamicsSettings.DropGizmoKey} — Drop gizmo under mouse (Edit > Shortcuts)", EditorStyles.miniLabel);
 
-            // Quick size preset (Medium) only
             GUILayout.Space(4);
             GUILayout.BeginHorizontal();
             GUILayout.Label("Size:", GUILayout.Width(32));
-            if (GUILayout.Button("M", EditorStyles.miniButton, GUILayout.Width(24))) { _windowRect.width = 560; _windowRect.height = 280; }
+            if (GUILayout.Button("M", EditorStyles.miniButton, GUILayout.Width(24))) { _windowRect.width = 280; _windowRect.height = 315; }
             GUILayout.FlexibleSpace();
             GUILayout.EndHorizontal();
 
             GUILayout.Space(6);
-            
-            // Control buttons
             DrawControlButtons();
-            
+
             GUILayout.EndVertical();
+            GUILayout.EndArea();
             
-            // Make window draggable via header area (and fallback to whole window)
-            GUI.DragWindow(new Rect(0, 0, Mathf.Max(200f, _windowRect.width), 26));
-            GUI.DragWindow();
+            // No GUI.DragWindow() — we handle dragging manually above
         }
         
         private static void UpdateCachedChangesSummary()
@@ -352,39 +352,16 @@ namespace EnhancedDynamics.Editor
         
         private static void DrawControlButtons()
         {
-            GUILayout.BeginHorizontal();
-            
             var originalColor = GUI.backgroundColor;
-            
-            // Save Changes button - enabled for on-demand saving
+            GUILayout.BeginVertical();
             GUI.backgroundColor = new Color(0.5f, 1f, 0.5f);
-            
-            if (GUILayout.Button("Save Changes", _buttonStyle, GUILayout.Height(30)))
-            {
-                SaveChanges();
-            }
-            
-            GUI.backgroundColor = originalColor;
-            
-            // Save + Exit button
+            if (GUILayout.Button("Save Changes", _buttonStyle, GUILayout.Height(18))) { SaveChanges(); }
             GUI.backgroundColor = new Color(0.6f, 0.9f, 0.6f);
-            if (GUILayout.Button("Save + Exit", _buttonStyle, GUILayout.Height(30)))
-            {
-                SaveChanges();
-                ExitPreview();
-            }
-            GUI.backgroundColor = originalColor;
-
-            // Exit Preview button
+            if (GUILayout.Button("Save + Exit", _buttonStyle, GUILayout.Height(18))) { SaveChanges(); ExitPreview(); }
             GUI.backgroundColor = new Color(1f, 0.7f, 0.7f);
-            if (GUILayout.Button("Exit Preview", _buttonStyle, GUILayout.Height(30)))
-            {
-                ExitPreview();
-            }
-            
+            if (GUILayout.Button("Exit Preview", _buttonStyle, GUILayout.Height(18))) { ExitPreview(); }
             GUI.backgroundColor = originalColor;
-            
-            GUILayout.EndHorizontal();
+            GUILayout.EndVertical();
             
             // Show simplified note
             GUILayout.Label("Use inspector to modify physics components", EditorStyles.miniLabel);
@@ -492,11 +469,9 @@ namespace EnhancedDynamics.Editor
             
             try
             {
-                // Window style
-                var bg = EditorGUIUtility.isProSkin ? new Color(0.15f, 0.15f, 0.15f, 0.98f) : new Color(0.86f, 0.86f, 0.86f, 0.98f);
+                // Window style: use native skin for a true Unity look
                 _windowStyle = new GUIStyle(GUI.skin.window)
                 {
-                    normal = { background = MakeTexture(8, 8, bg) },
                     padding = new RectOffset(8, 8, 8, 8)
                 };
                 
