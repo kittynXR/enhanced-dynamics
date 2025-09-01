@@ -7,6 +7,7 @@ using UnityEditor;
 using HarmonyLib;
 using VRC.SDK3.Dynamics.PhysBone.Components;
 using VRC.Dynamics;
+using Kittyn.Tools;
 
 namespace EnhancedDynamics.Editor
 {

@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using UnityEditor;
+using Kittyn.Tools;
 
 namespace EnhancedDynamics.Editor
 {
@@ -12,7 +13,7 @@ namespace EnhancedDynamics.Editor
         {
             if (EnhancedDynamicsSettings.DebugMode)
             {
-                Debug.Log("[EnhancedDynamics] Menu: Enter Physics Preview clicked");
+                Debug.Log($"[EnhancedDynamics] {KittynLocalization.Get("enhanced_dynamics.enter_physics_preview")}");
             }
             StartPreview();
         }
@@ -22,7 +23,7 @@ namespace EnhancedDynamics.Editor
         {
             if (EnhancedDynamicsSettings.DebugMode)
             {
-                Debug.Log("[EnhancedDynamics] Menu: Exit Physics Preview clicked");
+                Debug.Log($"[EnhancedDynamics] {KittynLocalization.Get("enhanced_dynamics.exit_physics_preview")}");
             }
             StopPreview();
         }
@@ -30,10 +31,10 @@ namespace EnhancedDynamics.Editor
         [MenuItem("Tools/⚙️🎨 kittyn.cat 🐟/Enhanced Dynamics/🐟 Test Debug Output", false, 1503)]
         public static void TestDebugOutput()
         {
-            Debug.Log("[EnhancedDynamics] === TEST DEBUG OUTPUT ===");
-            Debug.Log($"[EnhancedDynamics] System is working! Time: {System.DateTime.Now}");
-            Debug.LogWarning("[EnhancedDynamics] Warning test message");
-            Debug.LogError("[EnhancedDynamics] Error test message");
+            Debug.Log($"[EnhancedDynamics] {KittynLocalization.Get("enhanced_dynamics.test_debug_output")}");
+            Debug.Log($"[EnhancedDynamics] System working! {System.DateTime.Now}");
+            Debug.LogWarning($"[EnhancedDynamics] Warning test");
+            Debug.LogError($"[EnhancedDynamics] Error test");
         }
         
         public static bool IsPreviewActive => PlayModeHook.IsInAnyPreview;

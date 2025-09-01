@@ -6,6 +6,7 @@ using UnityEditor;
 using HarmonyLib;
 using VRC.SDK3.Dynamics.Contact.Components;
 using VRC.Dynamics;
+using Kittyn.Tools;
 
 namespace EnhancedDynamics.Editor
 {

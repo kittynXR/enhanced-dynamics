@@ -19,5 +19,9 @@
     "autoReferenced": true,
     "defineConstraints": [],
     "versionDefines": [],
+    "optionalUnityReferences": [],
+    "defineSymbols": [
+        "KITTYN_ENHANCED_DYNAMICS"
+    ],
     "noEngineReferences": false
 }

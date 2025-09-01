@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
+using Kittyn.Tools;
 
 namespace EnhancedDynamics.Editor
 {
@@ -73,7 +74,7 @@ namespace EnhancedDynamics.Editor
             if (PhysicsChangeMemory.HasPendingChanges)
             {
                 _cachedChangesSummary.Clear();
-                _cachedChangesSummary.Add("⚠ Pending changes from previous session");
+                _cachedChangesSummary.Add(KittynLocalization.Get("enhanced_dynamics.pending_changes_previous"));
             }
             
             // Position the window in middle-right by default (avoiding perspective gizmo)
@@ -279,7 +280,7 @@ namespace EnhancedDynamics.Editor
             GUILayout.BeginArea(new Rect(0, 22, _windowRect.width, _windowRect.height - 22));
             GUILayout.BeginVertical();
 
-            GUILayout.Label("Physics Preview Active", _headerStyle);
+            GUILayout.Label(KittynLocalization.Get("enhanced_dynamics.physics_preview_active"), _headerStyle);
             GUILayout.Space(10);
             DrawChangesSummary();
             GUILayout.Space(10);
@@ -308,22 +309,22 @@ namespace EnhancedDynamics.Editor
             }
 
             GUILayout.Space(6);
-            if (GUILayout.Button("Re-center Gizmo", _buttonStyle, GUILayout.Height(18)))
+            if (GUILayout.Button(KittynLocalization.Get("enhanced_dynamics.recenter_gizmo"), _buttonStyle, GUILayout.Height(18)))
             {
                 var sv = SceneView.lastActiveSceneView;
                 if (sv != null) AvatarGizmoHandler.RecenterToCamera(sv);
             }
-            if (GUILayout.Button($"Drop Gizmo Under Mouse ({EnhancedDynamicsSettings.DropGizmoKey})", _buttonStyle, GUILayout.Height(18)))
+            if (GUILayout.Button(KittynLocalization.GetFormat("enhanced_dynamics.drop_gizmo_under_mouse", EnhancedDynamicsSettings.DropGizmoKey), _buttonStyle, GUILayout.Height(18)))
             {
                 var sv = SceneView.lastActiveSceneView;
                 if (sv != null) AvatarGizmoHandler.DropAnchorUnderMouse(sv, Event.current.mousePosition);
             }
-            if (GUILayout.Button(_capturingHotkey ? "Press any key…" : "Set Drop Hotkey…", _buttonStyle, GUILayout.Height(18)))
+            if (GUILayout.Button(_capturingHotkey ? KittynLocalization.Get("enhanced_dynamics.press_any_key") : KittynLocalization.Get("enhanced_dynamics.set_drop_hotkey"), _buttonStyle, GUILayout.Height(18)))
             {
                 _capturingHotkey = !_capturingHotkey;
             }
 
-            GUILayout.Label($"Hotkey: {EnhancedDynamicsSettings.DropGizmoKey} — Drop gizmo under mouse (Edit > Shortcuts)", EditorStyles.miniLabel);
+            GUILayout.Label(KittynLocalization.GetFormat("enhanced_dynamics.hotkey_instruction", EnhancedDynamicsSettings.DropGizmoKey), EditorStyles.miniLabel);
 
             GUILayout.Space(4);
 
@@ -349,7 +350,7 @@ namespace EnhancedDynamics.Editor
         private static void DrawChangesSummary()
         {
             // Performance optimization: Simplified static display
-            GUILayout.Label("Status:", EditorStyles.boldLabel);
+            GUILayout.Label(KittynLocalization.Get("enhanced_dynamics.status"), EditorStyles.boldLabel);
             
             // Show single static message without expensive scrollview
             if (_cachedChangesSummary.Count > 0)
@@ -358,7 +359,7 @@ namespace EnhancedDynamics.Editor
             }
             else
             {
-                GUILayout.Label("Ready to save changes on-demand", EditorStyles.miniLabel);
+                GUILayout.Label(KittynLocalization.Get("enhanced_dynamics.ready_to_save"), EditorStyles.miniLabel);
             }
         }
         
@@ -367,16 +368,16 @@ namespace EnhancedDynamics.Editor
             var originalColor = GUI.backgroundColor;
             GUILayout.BeginVertical();
             GUI.backgroundColor = new Color(0.5f, 1f, 0.5f);
-            if (GUILayout.Button("Save Changes", _buttonStyle, GUILayout.Height(18))) { SaveChanges(); }
+            if (GUILayout.Button(KittynLocalization.Get("enhanced_dynamics.save_changes"), _buttonStyle, GUILayout.Height(18))) { SaveChanges(); }
             GUI.backgroundColor = new Color(0.6f, 0.9f, 0.6f);
-            if (GUILayout.Button("Save + Exit", _buttonStyle, GUILayout.Height(18))) { SaveChanges(); ExitPreview(); }
+            if (GUILayout.Button(KittynLocalization.Get("enhanced_dynamics.save_and_exit"), _buttonStyle, GUILayout.Height(18))) { SaveChanges(); ExitPreview(); }
             GUI.backgroundColor = new Color(1f, 0.7f, 0.7f);
-            if (GUILayout.Button("Exit Preview", _buttonStyle, GUILayout.Height(18))) { ExitPreview(); }
+            if (GUILayout.Button(KittynLocalization.Get("enhanced_dynamics.exit_preview"), _buttonStyle, GUILayout.Height(18))) { ExitPreview(); }
             GUI.backgroundColor = originalColor;
             GUILayout.EndVertical();
             
             // Show simplified note
-            GUILayout.Label("Use inspector to modify physics components", EditorStyles.miniLabel);
+            GUILayout.Label(KittynLocalization.Get("enhanced_dynamics.use_inspector_note"), EditorStyles.miniLabel);
         }
         
         private static void SaveChanges()

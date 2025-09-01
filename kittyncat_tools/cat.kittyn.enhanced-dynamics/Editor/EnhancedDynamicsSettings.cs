@@ -1,5 +1,6 @@
 using UnityEditor;
 using UnityEngine;
+using Kittyn.Tools;
 
 namespace EnhancedDynamics.Editor
 {
@@ -70,11 +71,11 @@ namespace EnhancedDynamics.Editor
             
             if (DebugMode)
             {
-                Debug.Log("[EnhancedDynamics] Debug logging enabled");
+                Debug.Log($"[EnhancedDynamics] {KittynLocalization.Get("enhanced_dynamics.debug_logging_enabled")}");
             }
             else
             {
-                Debug.Log("[EnhancedDynamics] Debug logging disabled");
+                Debug.Log($"[EnhancedDynamics] {KittynLocalization.Get("enhanced_dynamics.debug_logging_disabled")}");
             }
         }
 
@@ -89,7 +90,7 @@ namespace EnhancedDynamics.Editor
         private static void ToggleFastPreview()
         {
             FastPreview = !FastPreview;
-            Debug.Log($"[EnhancedDynamics] Fast Scene Preview {(FastPreview ? "enabled" : "disabled")}");
+            Debug.Log($"[EnhancedDynamics] {(FastPreview ? KittynLocalization.Get("enhanced_dynamics.fast_preview_enabled") : KittynLocalization.Get("enhanced_dynamics.fast_preview_disabled"))}");
         }
 
         [MenuItem("Tools/⚙️🎨 kittyn.cat 🐟/Enhanced Dynamics/⚡ Use Fast Scene Preview", true)]
