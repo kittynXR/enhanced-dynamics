@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 using UnityEditor;
-using Kittyn.Tools;
+using Kittyn.Tools.EnhancedDynamics;
 
 namespace EnhancedDynamics.Editor
 {

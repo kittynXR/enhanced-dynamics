@@ -5,19 +5,44 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
-namespace Kittyn.Tools
+namespace Kittyn.Tools.EnhancedDynamics
 {
     public static class KittynLocalization
     {
         private const string PREF_KEY_LANGUAGE = "KittynTools_Language";
-        private const string LOCALIZATION_PATH = "Localization/";
+        private const string PREF_KEY_LANGUAGE_TIMESTAMP = "KittynTools_Language_Timestamp";
+        private const string LOCALIZATION_PATH = "Localization";
         private const string DEFAULT_LANGUAGE = "en";
         
         private static Dictionary<string, Dictionary<string, object>> _languages;
         private static string _currentLanguage;
         private static bool _initialized;
+        private static double _lastLanguageChangeTime;
         
         public static event Action OnLanguageChanged;
+        
+        [InitializeOnLoadMethod]
+        private static void StartLanguageMonitoring()
+        {
+            EditorApplication.update += CheckForLanguageChanges;
+        }
+        
+        private static void CheckForLanguageChanges()
+        {
+            if (!_initialized) return;
+            
+            var currentTimestamp = EditorPrefs.GetFloat(PREF_KEY_LANGUAGE_TIMESTAMP, 0f);
+            if (currentTimestamp > _lastLanguageChangeTime)
+            {
+                _lastLanguageChangeTime = currentTimestamp;
+                var newLanguage = EditorPrefs.GetString(PREF_KEY_LANGUAGE, DEFAULT_LANGUAGE);
+                if (newLanguage != _currentLanguage && _languages != null && _languages.ContainsKey(newLanguage))
+                {
+                    _currentLanguage = newLanguage;
+                    OnLanguageChanged?.Invoke();
+                }
+            }
+        }
         
         public static string CurrentLanguage
         {
@@ -32,6 +57,8 @@ namespace Kittyn.Tools
                 {
                     _currentLanguage = value;
                     EditorPrefs.SetString(PREF_KEY_LANGUAGE, value);
+                    _lastLanguageChangeTime = EditorApplication.timeSinceStartup;
+                    EditorPrefs.SetFloat(PREF_KEY_LANGUAGE_TIMESTAMP, (float)_lastLanguageChangeTime);
                     OnLanguageChanged?.Invoke();
                 }
             }
@@ -63,30 +90,53 @@ namespace Kittyn.Tools
             {
                 _currentLanguage = DEFAULT_LANGUAGE;
             }
+            
+            _lastLanguageChangeTime = EditorPrefs.GetFloat(PREF_KEY_LANGUAGE_TIMESTAMP, 0f);
         }
         
         private static void LoadAllLanguages()
         {
             var resources = Resources.LoadAll<TextAsset>(LOCALIZATION_PATH);
-            
+
             foreach (var resource in resources)
             {
-                if (resource.name.StartsWith("kittyn.localization.") && resource.name.EndsWith(".json"))
+                if (!resource.name.StartsWith("kittyn.localization.")) continue;
+
+                var languageCode = resource.name.Replace("kittyn.localization.", "");
+                try
                 {
-                    var languageCode = resource.name.Replace("kittyn.localization.", "").Replace(".json", "");
-                    try
+                    var json = resource.text;
+                    var data = MiniJSON.Json.Deserialize(json) as Dictionary<string, object>;
+                    if (data != null)
                     {
-                        var json = resource.text;
-                        var data = MiniJSON.Json.Deserialize(json) as Dictionary<string, object>;
-                        if (data != null)
+                        var flat = FlattenDictionary(data);
+                        
+                        // Filter to only include keys that Enhanced Dynamics needs
+                        var filteredFlat = new Dictionary<string, object>();
+                        foreach (var kv in flat)
                         {
-                            _languages[languageCode] = FlattenDictionary(data);
+                            var key = kv.Key;
+                            if (key.StartsWith("enhanced_dynamics.") || 
+                                key.StartsWith("common.") || 
+                                key.StartsWith("messages."))
+                            {
+                                filteredFlat[key] = kv.Value;
+                            }
+                        }
+                        
+                        if (!_languages.TryGetValue(languageCode, out var existing))
+                        {
+                            _languages[languageCode] = new Dictionary<string, object>(filteredFlat);
+                        }
+                        else
+                        {
+                            foreach (var kv in filteredFlat) existing[kv.Key] = kv.Value;
                         }
                     }
-                    catch (Exception e)
-                    {
-                        Debug.LogError($"Failed to load language file {resource.name}: {e.Message}");
-                    }
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError($"Failed to load language file {resource.name}: {e.Message}");
                 }
             }
             

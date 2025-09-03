@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
-using Kittyn.Tools;
+using Kittyn.Tools.EnhancedDynamics;
 
 namespace EnhancedDynamics.Editor
 {
@@ -139,7 +139,7 @@ namespace EnhancedDynamics.Editor
             {
                 EnhancedDynamicsSettings.DropGizmoKey = ev.keyCode;
                 _capturingHotkey = false;
-                sceneView.ShowNotification(new GUIContent($"Drop hotkey set to {ev.keyCode}"), 1.5);
+                sceneView.ShowNotification(new GUIContent(KittynLocalization.GetFormat("enhanced_dynamics.hotkey_set_notification", ev.keyCode)), 1.5);
                 ev.Use();
             }
             if (PlayModeHook.IsInAnyPreview && ev.type == EventType.KeyDown && ev.keyCode == EnhancedDynamicsSettings.DropGizmoKey)
@@ -248,7 +248,7 @@ namespace EnhancedDynamics.Editor
             
             // Header drag bar area (immediate mode, absolute in window space)
             var headerRect = new Rect(0, 0, _windowRect.width, 22);
-            GUI.Label(headerRect, "Physics Preview", _headerStyle);
+            GUI.Label(headerRect, KittynLocalization.Get("enhanced_dynamics.physics_preview_title"), _headerStyle);
             var gripColor = EditorGUIUtility.isProSkin ? new Color(1f, 1f, 1f, 0.25f) : new Color(0f, 0f, 0f, 0.35f);
             float gx = headerRect.width - 22f;
             EditorGUI.DrawRect(new Rect(gx, 7f, 14f, 1f), gripColor);
@@ -286,7 +286,7 @@ namespace EnhancedDynamics.Editor
             GUILayout.Space(10);
 
             var showBones = EnhancedDynamicsSettings.ShowBones;
-            var newShowBones = GUILayout.Toggle(showBones, "Show Bones");
+            var newShowBones = GUILayout.Toggle(showBones, KittynLocalization.Get("enhanced_dynamics.show_bones"));
             if (newShowBones != showBones)
             {
                 EnhancedDynamicsSettings.ShowBones = newShowBones;
@@ -296,13 +296,13 @@ namespace EnhancedDynamics.Editor
             // Build prevention toggles
             GUILayout.Space(6);
             var preventVrcf = EnhancedDynamicsSettings.PreventVRCFuryInPreview;
-            var newPreventVrcf = GUILayout.Toggle(preventVrcf, "Prevent VRCFury builds in preview");
+            var newPreventVrcf = GUILayout.Toggle(preventVrcf, KittynLocalization.Get("enhanced_dynamics.prevent_vrcfury"));
             if (newPreventVrcf != preventVrcf)
             {
                 EnhancedDynamicsSettings.PreventVRCFuryInPreview = newPreventVrcf;
             }
             var preventMa = EnhancedDynamicsSettings.PreventModularAvatarInPreview;
-            var newPreventMa = GUILayout.Toggle(preventMa, "Prevent MA builds in preview");
+            var newPreventMa = GUILayout.Toggle(preventMa, KittynLocalization.Get("enhanced_dynamics.prevent_ma"));
             if (newPreventMa != preventMa)
             {
                 EnhancedDynamicsSettings.PreventModularAvatarInPreview = newPreventMa;
@@ -342,7 +342,7 @@ namespace EnhancedDynamics.Editor
             // Simple status message for on-demand saving
             if (_cachedChangesSummary.Count == 0)
             {
-                _cachedChangesSummary.Add("Ready to save changes on-demand");
+                _cachedChangesSummary.Add(KittynLocalization.Get("enhanced_dynamics.ready_to_save_default"));
             }
             // No need to clear and recreate the same message every time
         }
@@ -359,7 +359,7 @@ namespace EnhancedDynamics.Editor
             }
             else
             {
-                GUILayout.Label(KittynLocalization.Get("enhanced_dynamics.ready_to_save"), EditorStyles.miniLabel);
+                GUILayout.Label(KittynLocalization.Get("enhanced_dynamics.ready_to_save_default"), EditorStyles.miniLabel);
             }
         }
         
@@ -399,7 +399,7 @@ namespace EnhancedDynamics.Editor
                         var sv = SceneView.lastActiveSceneView;
                         if (sv != null)
                         {
-                            sv.ShowNotification(new GUIContent("Save not available in Fast Preview"), 2.0);
+                            sv.ShowNotification(new GUIContent(KittynLocalization.Get("enhanced_dynamics.save_not_available_fast")), 2.0);
                         }
                         Debug.LogWarning("[EnhancedDynamics] Save not available in Fast Scene Preview (no clone). Use Safe Preview.");
                         return;
@@ -412,7 +412,7 @@ namespace EnhancedDynamics.Editor
                         var sceneView = SceneView.lastActiveSceneView;
                         if (sceneView != null)
                         {
-                            sceneView.ShowNotification(new GUIContent("Error: Missing avatar references"), 2.0);
+                            sceneView.ShowNotification(new GUIContent(KittynLocalization.Get("enhanced_dynamics.error_missing_references")), 2.0);
                         }
                         return;
                     }
@@ -429,11 +429,11 @@ namespace EnhancedDynamics.Editor
                 {
                     if (hasChanges)
                     {
-                        sceneView2.ShowNotification(new GUIContent("Changes saved! Will apply on exit."), 2.0);
+                        sceneView2.ShowNotification(new GUIContent(KittynLocalization.Get("enhanced_dynamics.changes_saved_will_apply")), 2.0);
                     }
                     else
                     {
-                        sceneView2.ShowNotification(new GUIContent("No changes to save"), 1.5);
+                        sceneView2.ShowNotification(new GUIContent(KittynLocalization.Get("enhanced_dynamics.no_changes_to_save")), 1.5);
                     }
                 }
                 
@@ -441,7 +441,7 @@ namespace EnhancedDynamics.Editor
                 if (hasChanges)
                 {
                     _cachedChangesSummary.Clear();
-                    _cachedChangesSummary.Add("Changes saved - pending application");
+                    _cachedChangesSummary.Add(KittynLocalization.Get("enhanced_dynamics.changes_saved_pending"));
                 }
                 
                 Debug.Log($"[EnhancedDynamics] Save to memory completed - Had changes: {hasChanges}");
@@ -453,12 +453,12 @@ namespace EnhancedDynamics.Editor
                 var sceneView = SceneView.lastActiveSceneView;
                 if (sceneView != null)
                 {
-                    sceneView.ShowNotification(new GUIContent("Error saving changes!"), 3.0);
+                    sceneView.ShowNotification(new GUIContent(KittynLocalization.Get("enhanced_dynamics.error_saving_changes")), 3.0);
                 }
                 
                 // Show error in status
                 _cachedChangesSummary.Clear();
-                _cachedChangesSummary.Add("Error during save operation");
+                _cachedChangesSummary.Add(KittynLocalization.Get("enhanced_dynamics.error_during_save"));
             }
         }
         

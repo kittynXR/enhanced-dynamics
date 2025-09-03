@@ -7,7 +7,7 @@ using UnityEditor;
 using HarmonyLib;
 using VRC.SDK3.Dynamics.PhysBone.Components;
 using VRC.Dynamics;
-using Kittyn.Tools;
+using Kittyn.Tools.EnhancedDynamics;
 
 namespace EnhancedDynamics.Editor
 {
@@ -255,7 +255,7 @@ namespace EnhancedDynamics.Editor
             var originalColor = GUI.backgroundColor;
             GUI.backgroundColor = PhysicsPreviewManager.IsPreviewActive ? new Color(0.5f, 1f, 0.5f) : Color.green;
             
-            if (GUILayout.Button(PhysicsPreviewManager.IsPreviewActive ? "Preview Physics (Active)" : "Preview Physics", 
+            if (GUILayout.Button(PhysicsPreviewManager.IsPreviewActive ? KittynLocalization.Get("enhanced_dynamics.preview_physics_active") : KittynLocalization.Get("enhanced_dynamics.preview_physics"), 
                 GUILayout.Height(30)))
             {
                 if (PhysicsPreviewManager.IsPreviewActive)
@@ -290,7 +290,7 @@ namespace EnhancedDynamics.Editor
             var originalColor = GUI.backgroundColor;
             GUI.backgroundColor = PhysicsPreviewManager.IsPreviewActive ? new Color(0.5f, 1f, 0.5f) : Color.green;
             
-            if (GUILayout.Button(PhysicsPreviewManager.IsPreviewActive ? "Preview Physics (Active)" : "Preview Physics", 
+            if (GUILayout.Button(PhysicsPreviewManager.IsPreviewActive ? KittynLocalization.Get("enhanced_dynamics.preview_physics_active") : KittynLocalization.Get("enhanced_dynamics.preview_physics"), 
                 GUILayout.Height(30)))
             {
                 if (PhysicsPreviewManager.IsPreviewActive)
@@ -338,7 +338,7 @@ namespace EnhancedDynamics.Editor
                 
                 // Create a box for better visual separation
                 EditorGUILayout.Space();
-                EditorGUILayout.LabelField("Viewport Gizmos", EditorStyles.miniLabel);
+                EditorGUILayout.LabelField(KittynLocalization.Get("enhanced_dynamics.viewport_gizmos"), EditorStyles.miniLabel);
                 
                 EditorGUILayout.BeginHorizontal();
                 
@@ -349,7 +349,7 @@ namespace EnhancedDynamics.Editor
                 if (_currentCollider.shapeType != VRCPhysBoneColliderBase.ShapeType.Plane)
                 {
                     GUI.backgroundColor = state.radiusGizmo ? Color.green : Color.red;
-                    if (GUILayout.Button(state.radiusGizmo ? "● Radius" : "○ Radius", EditorStyles.miniButton))
+                    if (GUILayout.Button(state.radiusGizmo ? KittynLocalization.Get("enhanced_dynamics.gizmo_radius_active") : KittynLocalization.Get("enhanced_dynamics.gizmo_radius_inactive"), EditorStyles.miniButton))
                     {
                         state.radiusGizmo = !state.radiusGizmo;
                         SceneView.RepaintAll();
@@ -360,7 +360,7 @@ namespace EnhancedDynamics.Editor
                 if (_currentCollider.shapeType == VRCPhysBoneColliderBase.ShapeType.Capsule)
                 {
                     GUI.backgroundColor = state.heightGizmo ? Color.green : Color.red;
-                    if (GUILayout.Button(state.heightGizmo ? "● Height" : "○ Height", EditorStyles.miniButton))
+                    if (GUILayout.Button(state.heightGizmo ? KittynLocalization.Get("enhanced_dynamics.gizmo_height_active") : KittynLocalization.Get("enhanced_dynamics.gizmo_height_inactive"), EditorStyles.miniButton))
                     {
                         state.heightGizmo = !state.heightGizmo;
                         SceneView.RepaintAll();
@@ -369,7 +369,7 @@ namespace EnhancedDynamics.Editor
                 
                 // Position button
                 GUI.backgroundColor = state.positionGizmo ? Color.green : Color.red;
-                if (GUILayout.Button(state.positionGizmo ? "● Position" : "○ Position", EditorStyles.miniButton))
+                if (GUILayout.Button(state.positionGizmo ? KittynLocalization.Get("enhanced_dynamics.gizmo_position_active") : KittynLocalization.Get("enhanced_dynamics.gizmo_position_inactive"), EditorStyles.miniButton))
                 {
                     state.positionGizmo = !state.positionGizmo;
                     SceneView.RepaintAll();
@@ -377,7 +377,7 @@ namespace EnhancedDynamics.Editor
                 
                 // Rotation button
                 GUI.backgroundColor = state.rotationGizmo ? Color.green : Color.red;
-                if (GUILayout.Button(state.rotationGizmo ? "● Rotation" : "○ Rotation", EditorStyles.miniButton))
+                if (GUILayout.Button(state.rotationGizmo ? KittynLocalization.Get("enhanced_dynamics.gizmo_rotation_active") : KittynLocalization.Get("enhanced_dynamics.gizmo_rotation_inactive"), EditorStyles.miniButton))
                 {
                     state.rotationGizmo = !state.rotationGizmo;
                     SceneView.RepaintAll();
@@ -454,7 +454,7 @@ namespace EnhancedDynamics.Editor
                 
                 if (EditorGUI.EndChangeCheck())
                 {
-                    Undo.RecordObject(activeCollider, "Change PhysBone Radius");
+                    Undo.RecordObject(activeCollider, KittynLocalization.Get("enhanced_dynamics.undo_change_physbone_radius"));
                     activeCollider.radius = newRadius;
                     EditorUtility.SetDirty(activeCollider);
                 }
@@ -478,7 +478,7 @@ namespace EnhancedDynamics.Editor
                 var newTopPos = Handles.Slider(topPos, upVector, HandleUtility.GetHandleSize(topPos) * 1.0f, Handles.ArrowHandleCap, 0.1f);
                 if (EditorGUI.EndChangeCheck())
                 {
-                    Undo.RecordObject(activeCollider, "Change PhysBone Height");
+                    Undo.RecordObject(activeCollider, KittynLocalization.Get("enhanced_dynamics.undo_change_physbone_height"));
                     var delta = Vector3.Project(newTopPos - topPos, upVector);
                     activeCollider.height += delta.magnitude * 2f * (Vector3.Dot(delta, upVector) > 0 ? 1 : -1);
                     activeCollider.height = Mathf.Max(0.01f, activeCollider.height);
@@ -490,7 +490,7 @@ namespace EnhancedDynamics.Editor
                 var newBottomPos = Handles.Slider(bottomPos, -upVector, HandleUtility.GetHandleSize(bottomPos) * 1.0f, Handles.ArrowHandleCap, 0.1f);
                 if (EditorGUI.EndChangeCheck())
                 {
-                    Undo.RecordObject(activeCollider, "Change PhysBone Height");
+                    Undo.RecordObject(activeCollider, KittynLocalization.Get("enhanced_dynamics.undo_change_physbone_height"));
                     var delta = Vector3.Project(newBottomPos - bottomPos, -upVector);
                     activeCollider.height += delta.magnitude * 2f * (Vector3.Dot(delta, -upVector) > 0 ? 1 : -1);
                     activeCollider.height = Mathf.Max(0.01f, activeCollider.height);
@@ -514,7 +514,7 @@ namespace EnhancedDynamics.Editor
                 
                 if (EditorGUI.EndChangeCheck())
                 {
-                    Undo.RecordObject(activeCollider, "Move PhysBone Collider");
+                    Undo.RecordObject(activeCollider, KittynLocalization.Get("enhanced_dynamics.undo_move_physbone_collider"));
                     activeCollider.position = transform.InverseTransformPoint(newWorldPos);
                     EditorUtility.SetDirty(activeCollider);
                 }
@@ -534,7 +534,7 @@ namespace EnhancedDynamics.Editor
                 
                 if (EditorGUI.EndChangeCheck())
                 {
-                    Undo.RecordObject(activeCollider, "Rotate PhysBone Collider");
+                    Undo.RecordObject(activeCollider, KittynLocalization.Get("enhanced_dynamics.undo_rotate_physbone_collider"));
                     activeCollider.rotation = Quaternion.Inverse(transform.rotation) * newWorldRotation;
                     EditorUtility.SetDirty(activeCollider);
                 }

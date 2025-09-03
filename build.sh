@@ -211,6 +211,11 @@ if [ ! -f "$UNITY_PACKAGE" ]; then
     
     # Copy the kittyncat_tools directory preserving structure
     cp -r "kittyncat_tools" "$TEMP_UNITY_DIR/Assets/"
+
+    # Remove embedded localization provider code for UnityPackage to avoid duplicates
+    # (Provider is shipped via ComfiHierarchy only for .unitypackage installs)
+    rm -rf "$TEMP_UNITY_DIR/Assets/kittyncat_tools/cat.kittyn.enhanced-dynamics/Editor/Localization"
+    rm -rf "$TEMP_UNITY_DIR/Assets/kittyncat_tools/cat.kittyn.enhanced-dynamics/Resources/Localization/Editor" 2>/dev/null || true
     
     # No assembly definition swapping needed - using single .asmdef files for both packages
     print_info "Using existing assembly definitions for UnityPackage..."

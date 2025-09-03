@@ -16,7 +16,9 @@
   "changelogUrl": "https://github.com/kittynXR/enhanced-dynamics/releases",
   "documentationUrl": "https://github.com/kittynXR/enhanced-dynamics#readme",
   "dependencies": {},
-  "vpmDependencies": {"com.vrchat.avatars": ">=3.7.0"},
+  "vpmDependencies": {
+    "com.vrchat.avatars": ">=3.7.0"
+  },
   "keywords": [
     "vrchat",
     "unity",

@@ -18,7 +18,13 @@
     "precompiledReferences": [],
     "autoReferenced": true,
     "defineConstraints": [],
-    "versionDefines": [],
+    "versionDefines": [
+        {
+            "name": "cat.kittyn.comfi-hierarchy",
+            "expression": "",
+            "define": "HAS_COMFI_HIERARCHY"
+        }
+    ],
     "optionalUnityReferences": [],
     "defineSymbols": [
         "KITTYN_ENHANCED_DYNAMICS"

@@ -6,7 +6,7 @@ using UnityEditor;
 using HarmonyLib;
 using VRC.SDK3.Dynamics.Contact.Components;
 using VRC.Dynamics;
-using Kittyn.Tools;
+using Kittyn.Tools.EnhancedDynamics;
 
 namespace EnhancedDynamics.Editor
 {
@@ -155,7 +155,7 @@ namespace EnhancedDynamics.Editor
             var state = _gizmoStates[instanceId];
             
             EditorGUILayout.Space();
-            EditorGUILayout.LabelField("Viewport Gizmos", EditorStyles.miniLabel);
+            EditorGUILayout.LabelField(KittynLocalization.Get("enhanced_dynamics.viewport_gizmos"), EditorStyles.miniLabel);
             
             EditorGUILayout.BeginHorizontal();
             
@@ -164,7 +164,7 @@ namespace EnhancedDynamics.Editor
             
             // Radius button
             GUI.backgroundColor = state.radiusGizmo ? Color.green : Color.red;
-            if (GUILayout.Button(state.radiusGizmo ? "● Radius" : "○ Radius", EditorStyles.miniButton))
+            if (GUILayout.Button(state.radiusGizmo ? KittynLocalization.Get("enhanced_dynamics.gizmo_radius_active") : KittynLocalization.Get("enhanced_dynamics.gizmo_radius_inactive"), EditorStyles.miniButton))
             {
                 state.radiusGizmo = !state.radiusGizmo;
                 SceneView.RepaintAll();
@@ -174,7 +174,7 @@ namespace EnhancedDynamics.Editor
             if (_currentContact.shapeType == ContactBase.ShapeType.Capsule)
             {
                 GUI.backgroundColor = state.heightGizmo ? Color.green : Color.red;
-                if (GUILayout.Button(state.heightGizmo ? "● Height" : "○ Height", EditorStyles.miniButton))
+                if (GUILayout.Button(state.heightGizmo ? KittynLocalization.Get("enhanced_dynamics.gizmo_height_active") : KittynLocalization.Get("enhanced_dynamics.gizmo_height_inactive"), EditorStyles.miniButton))
                 {
                     state.heightGizmo = !state.heightGizmo;
                     SceneView.RepaintAll();
@@ -183,7 +183,7 @@ namespace EnhancedDynamics.Editor
             
             // Position button
             GUI.backgroundColor = state.positionGizmo ? Color.green : Color.red;
-            if (GUILayout.Button(state.positionGizmo ? "● Position" : "○ Position", EditorStyles.miniButton))
+            if (GUILayout.Button(state.positionGizmo ? KittynLocalization.Get("enhanced_dynamics.gizmo_position_active") : KittynLocalization.Get("enhanced_dynamics.gizmo_position_inactive"), EditorStyles.miniButton))
             {
                 state.positionGizmo = !state.positionGizmo;
                 SceneView.RepaintAll();
@@ -191,7 +191,7 @@ namespace EnhancedDynamics.Editor
             
             // Rotation button
             GUI.backgroundColor = state.rotationGizmo ? Color.green : Color.red;
-            if (GUILayout.Button(state.rotationGizmo ? "● Rotation" : "○ Rotation", EditorStyles.miniButton))
+            if (GUILayout.Button(state.rotationGizmo ? KittynLocalization.Get("enhanced_dynamics.gizmo_rotation_active") : KittynLocalization.Get("enhanced_dynamics.gizmo_rotation_inactive"), EditorStyles.miniButton))
             {
                 state.rotationGizmo = !state.rotationGizmo;
                 SceneView.RepaintAll();
@@ -266,7 +266,7 @@ namespace EnhancedDynamics.Editor
                 var newRadius = Handles.RadiusHandle(worldRotation, worldPos, contact.radius);
                 if (EditorGUI.EndChangeCheck())
                 {
-                    Undo.RecordObject(contact, "Change Contact Radius");
+                    Undo.RecordObject(contact, KittynLocalization.Get("enhanced_dynamics.undo_change_contact_radius"));
                     contact.radius = newRadius;
                     EditorUtility.SetDirty(contact);
                 }
@@ -286,7 +286,7 @@ namespace EnhancedDynamics.Editor
                 var newTopPos = Handles.Slider(topPos, upVector, HandleUtility.GetHandleSize(topPos) * 1.0f, Handles.ArrowHandleCap, 0.1f);
                 if (EditorGUI.EndChangeCheck())
                 {
-                    Undo.RecordObject(contact, "Change Contact Height");
+                    Undo.RecordObject(contact, KittynLocalization.Get("enhanced_dynamics.undo_change_contact_height"));
                     var delta = Vector3.Project(newTopPos - topPos, upVector);
                     contact.height += delta.magnitude * 2f / transform.lossyScale.y * (Vector3.Dot(delta, upVector) > 0 ? 1 : -1);
                     contact.height = Mathf.Max(0.01f, contact.height);
@@ -297,7 +297,7 @@ namespace EnhancedDynamics.Editor
                 var newBottomPos = Handles.Slider(bottomPos, -upVector, HandleUtility.GetHandleSize(bottomPos) * 1.0f, Handles.ArrowHandleCap, 0.1f);
                 if (EditorGUI.EndChangeCheck())
                 {
-                    Undo.RecordObject(contact, "Change Contact Height");
+                    Undo.RecordObject(contact, KittynLocalization.Get("enhanced_dynamics.undo_change_contact_height"));
                     var delta = Vector3.Project(newBottomPos - bottomPos, -upVector);
                     contact.height += delta.magnitude * 2f / transform.lossyScale.y * (Vector3.Dot(delta, -upVector) > 0 ? 1 : -1);
                     contact.height = Mathf.Max(0.01f, contact.height);
@@ -318,7 +318,7 @@ namespace EnhancedDynamics.Editor
                 var newWorldPos = Handles.PositionHandle(worldPos, transform.rotation);
                 if (EditorGUI.EndChangeCheck())
                 {
-                    Undo.RecordObject(contact, "Change Contact Position");
+                    Undo.RecordObject(contact, KittynLocalization.Get("enhanced_dynamics.undo_change_contact_position"));
                     contact.position = transform.InverseTransformPoint(newWorldPos);
                     EditorUtility.SetDirty(contact);
                 }
@@ -335,7 +335,7 @@ namespace EnhancedDynamics.Editor
                 var newWorldRot = Handles.RotationHandle(worldRot, worldPos);
                 if (EditorGUI.EndChangeCheck())
                 {
-                    Undo.RecordObject(contact, "Change Contact Rotation");
+                    Undo.RecordObject(contact, KittynLocalization.Get("enhanced_dynamics.undo_change_contact_rotation"));
                     contact.rotation = Quaternion.Inverse(transform.rotation) * newWorldRot;
                     EditorUtility.SetDirty(contact);
                 }

@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEditor;
 using System;
-using Kittyn.Tools;
+using Kittyn.Tools.EnhancedDynamics;
 
 namespace EnhancedDynamics.Editor.EditorUI
 {
@@ -185,7 +185,7 @@ namespace EnhancedDynamics.Editor.EditorUI
             EditorGUILayout.BeginHorizontal();
             var newValue = EditorGUILayout.Slider(label, currentValue, min, max);
             
-            if (GUILayout.Button("Get Current", GUILayout.Width(80)))
+            if (GUILayout.Button(KittynLocalization.Get("common.get_current"), GUILayout.Width(80)))
             {
                 newValue = getCurrentValue();
                 setValue(newValue);
@@ -203,7 +203,7 @@ namespace EnhancedDynamics.Editor.EditorUI
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.PropertyField(serializedObject.FindProperty(propertyName), label);
             
-            if (GUILayout.Button("Get Current", GUILayout.Width(80)))
+            if (GUILayout.Button(KittynLocalization.Get("common.get_current"), GUILayout.Width(80)))
             {
                 var prop = serializedObject.FindProperty(propertyName);
                 prop.floatValue = getCurrentValue();

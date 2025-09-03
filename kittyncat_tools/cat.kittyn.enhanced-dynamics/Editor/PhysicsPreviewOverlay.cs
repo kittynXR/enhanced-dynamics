@@ -2,6 +2,7 @@ using UnityEditor;
 using UnityEditor.Overlays;
 using UnityEngine;
 using UnityEngine.UIElements;
+using Kittyn.Tools.EnhancedDynamics;
 
 namespace EnhancedDynamics.Editor
 {
@@ -101,25 +102,25 @@ namespace EnhancedDynamics.Editor
                 {
                     if (EnhancedDynamicsSettings.FastPreview)
                     {
-                        var sv = SceneView.lastActiveSceneView; sv?.ShowNotification(new GUIContent("Save not available in Fast Preview"), 2.0);
+                        var sv = SceneView.lastActiveSceneView; sv?.ShowNotification(new GUIContent(KittynLocalization.Get("enhanced_dynamics.save_not_available_fast")), 2.0);
                         return false;
                     }
                     else
                     {
-                        var sv = SceneView.lastActiveSceneView; sv?.ShowNotification(new GUIContent("Error: Missing avatar references"), 2.0);
+                        var sv = SceneView.lastActiveSceneView; sv?.ShowNotification(new GUIContent(KittynLocalization.Get("enhanced_dynamics.error_missing_references")), 2.0);
                         return false;
                     }
                 }
 
                 bool hasChanges = PhysicsChangeMemory.CaptureChangesToMemory(originalAvatar, physicsClone);
                 var sceneView = SceneView.lastActiveSceneView;
-                sceneView?.ShowNotification(new GUIContent(hasChanges ? "Changes saved! Will apply on exit." : "No changes to save"), hasChanges ? 2.0 : 1.5);
+                sceneView?.ShowNotification(new GUIContent(hasChanges ? KittynLocalization.Get("enhanced_dynamics.changes_saved_will_apply") : KittynLocalization.Get("enhanced_dynamics.no_changes_to_save")), hasChanges ? 2.0 : 1.5);
                 return hasChanges;
             }
             catch (System.Exception e)
             {
                 Debug.LogError($"[EnhancedDynamics] Overlay save error: {e}");
-                var sceneView = SceneView.lastActiveSceneView; sceneView?.ShowNotification(new GUIContent("Error saving changes!"), 3.0);
+                var sceneView = SceneView.lastActiveSceneView; sceneView?.ShowNotification(new GUIContent(KittynLocalization.Get("enhanced_dynamics.error_saving_changes")), 3.0);
                 return false;
             }
         }

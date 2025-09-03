@@ -1,6 +1,6 @@
 using UnityEditor;
 using UnityEngine;
-using Kittyn.Tools;
+using Kittyn.Tools.EnhancedDynamics;
 
 namespace EnhancedDynamics.Editor
 {

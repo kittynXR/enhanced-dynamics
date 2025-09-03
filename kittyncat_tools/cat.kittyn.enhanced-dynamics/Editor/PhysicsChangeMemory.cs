@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEditor;
 using VRC.SDK3.Dynamics.PhysBone.Components;
 using VRC.SDK3.Dynamics.Contact.Components;
+using Kittyn.Tools.EnhancedDynamics;
 
 namespace EnhancedDynamics.Editor
 {
@@ -337,7 +338,7 @@ namespace EnhancedDynamics.Editor
                 // Show notification
                 if (SceneView.lastActiveSceneView != null)
                 {
-                    SceneView.lastActiveSceneView.ShowNotification(new GUIContent("Physics changes applied!"), 2.0);
+                    SceneView.lastActiveSceneView.ShowNotification(new GUIContent(KittynLocalization.Get("enhanced_dynamics.physics_changes_applied")), 2.0);
                 }
                 
                 return appliedCount > 0;
