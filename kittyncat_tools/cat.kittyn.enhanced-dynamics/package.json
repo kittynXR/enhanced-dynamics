@@ -1,7 +1,7 @@
 {
   "name": "cat.kittyn.enhanced-dynamics",
   "displayName": "cátte — Enhanced Dynamics",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "unity": "2019.4",
   "unityRelease": "31f1",
   "description": "UI Enhancements for VRChat Dynamics (viewport handles, physics preview)",
@@ -9,7 +9,7 @@
   "author": {
     "name": "kittyn",
     "email": "cat@kittyn.cat",
-    "url": "https://github.com/kittynXR/enhanced-dynamics/releases/download/v1.1.1/cat.kittyn.enhanced-dynamics-1.1.1.zip"
+    "url": "https://github.com/kittynXR/enhanced-dynamics/releases/download/v1.2.0/cat.kittyn.enhanced-dynamics-1.2.0.zip"
   },
   "license": "MIT",
   "licensesUrl": "https://github.com/kittynXR/enhanced-dynamics/blob/main/LICENSE",
@@ -24,6 +24,6 @@
     "unity",
     "tool"
   ],
-  "url": "https://github.com/kittynXR/enhanced-dynamics/releases/download/v1.1.1/cat.kittyn.enhanced-dynamics-1.1.1.zip",
+  "url": "https://github.com/kittynXR/enhanced-dynamics/releases/download/v1.2.0/cat.kittyn.enhanced-dynamics-1.2.0.zip",
   "samples": []
 }
